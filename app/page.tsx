@@ -103,25 +103,14 @@ function HomeContent() {
         <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <div className="max-w-[1600px] mx-auto space-y-8">
             {/* Unified Dashboard / Stats at top */}
-            <section className="animate-in fade-in duration-700">
-              <Dashboard onActionClick={(action) => setActiveTab(action)} />
-            </section>
+            {activeTab !== 'calendar' && (
+              <section className="animate-in fade-in duration-700">
+                <Dashboard onActionClick={(action) => setActiveTab(action)} />
+              </section>
+            )}
 
             {/* View Switcher (Horizontal tabs for secondary nav) */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="flex w-fit bg-card border rounded-full p-1 shadow-sm mb-6">
-                {menuItems.slice(0, 5).map(item => (
-                  <TabsTrigger 
-                    key={item.id} 
-                    value={item.id} 
-                    className="rounded-full px-6 py-2 text-sm font-bold uppercase tracking-wider transition-all data-[state=active]:bg-slate-100 data-[state=active]:text-primary"
-                  >
-                    <item.icon className="w-4 h-4 mr-2 opacity-50" />
-                    {item.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              
               <div className="animate-in slide-in-from-bottom-4 duration-500">
                 <TabsContent value="daily" className="mt-0">
                   <div className="bg-card border rounded-2xl p-8 shadow-xl shadow-slate-200/50 min-h-[500px]">
@@ -134,7 +123,7 @@ function HomeContent() {
                   </div>
                 </TabsContent>
                 <TabsContent value="calendar" className="mt-0">
-                  <div className="bg-card border rounded-2xl p-8 shadow-xl shadow-slate-200/50 min-h-[500px]">
+                  <div className="bg-card border rounded-2xl p-4 md:p-8 shadow-xl shadow-slate-200/50 h-[calc(100vh-10rem)] flex flex-col">
                     <TrailerCalendar />
                   </div>
                 </TabsContent>

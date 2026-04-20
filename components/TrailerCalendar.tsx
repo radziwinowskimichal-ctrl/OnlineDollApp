@@ -295,8 +295,8 @@ export function TrailerCalendar() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 p-3 rounded-xl border">
+    <div className="flex flex-col h-full space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 p-3 rounded-xl border shrink-0">
         <div className="flex items-center gap-2">
           <div className="flex bg-white rounded-lg border shadow-sm p-1">
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" onClick={() => setStartDateOffset(prev => prev - 7)}>
@@ -369,16 +369,16 @@ export function TrailerCalendar() {
         </div>
       </div>
 
-      <div className="bg-white border rounded-xl shadow-sm overflow-hidden ring-1 ring-slate-100">
-        <ScrollArea className="w-full">
-          <div className="flex w-max min-w-full">
+      <div className="bg-white border rounded-xl shadow-sm ring-1 ring-slate-100 flex-1 flex flex-col min-h-0">
+        <ScrollArea className="w-full h-full">
+          <div className="flex w-max min-w-full relative">
             {/* Header Column (Trailers) */}
-            <div className="w-56 flex-shrink-0 border-r bg-slate-50/50 sticky left-0 z-20">
-              <div className="h-12 border-b flex items-center px-4 font-black text-[10px] uppercase tracking-wider text-slate-500">
+            <div className="w-56 flex-shrink-0 border-r bg-slate-50/50 sticky left-0 z-30">
+              <div className="h-12 border-b flex items-center px-4 font-black text-[10px] uppercase tracking-wider text-slate-500 sticky top-0 bg-slate-100 z-40 shadow-sm">
                 {t.trailer}
               </div>
               {filteredTrailers.map(trailer => (
-                <div key={trailer.id} className="h-16 border-b flex flex-col justify-center px-4 bg-white/80 group/trailer hover:bg-slate-50 transition-colors">
+                <div key={trailer.id} className="h-16 border-b flex flex-col justify-center px-4 bg-white/95 group/trailer hover:bg-slate-50 transition-colors">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="inline-flex px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-900 font-mono text-[10px] font-black tracking-tight uppercase">
                       {trailer.plate}
@@ -402,8 +402,8 @@ export function TrailerCalendar() {
               {days.map(day => (
               <div key={day.toISOString()} className="w-24 flex-shrink-0 border-r last:border-r-0">
                 <div className={cn(
-                  "h-12 border-b flex flex-col items-center justify-center transition-colors",
-                  isSameDay(day, today) ? "bg-primary/5 border-b-primary/30" : "bg-slate-50/30"
+                  "h-12 border-b flex flex-col items-center justify-center transition-colors sticky top-0 z-20 shadow-sm",
+                  isSameDay(day, today) ? "bg-primary/5 border-b-primary/30" : "bg-white"
                 )}>
                   <div className={cn("text-[9px] font-black uppercase tracking-widest mb-0.5", isSameDay(day, today) ? "text-primary" : "text-slate-400")}>
                     {format(day, "EEE", { locale: dateLocale })}
