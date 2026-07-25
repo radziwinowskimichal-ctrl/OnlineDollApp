@@ -6,6 +6,7 @@ import { useApp } from "@/lib/context";
 import { colorClassMap, badgeColorClassMap } from "@/lib/colors";
 import { format, addDays, startOfToday, parseISO, isWithinInterval, isSameDay } from "date-fns";
 import { pl, enUS, de } from "date-fns/locale";
+import { useRouter } from "next/navigation";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Plus, Check, ChevronsUpDown, Search } from "lucide-react";
@@ -46,6 +47,7 @@ import { translations } from "@/lib/translations";
 
 export function TrailerCalendar() {
   const { trailers, reservations, clients, addReservation, addClient, language, currentUserId, profiles, updateReservation, deleteReservation, statusColors, checkTrailerAvailability } = useApp();
+  const router = useRouter();
 
   const t = translations[language as keyof typeof translations] || translations.pl;
   
@@ -378,7 +380,12 @@ export function TrailerCalendar() {
                 {t.trailer}
               </div>
               {filteredTrailers.map(trailer => (
-                <div key={trailer.id} className="h-16 border-b flex flex-col justify-center px-4 bg-white/95 group/trailer hover:bg-slate-50 transition-colors">
+                <div 
+                  key={trailer.id} 
+                  onDoubleClick={() => router.push(`/trailers/${trailer.id}`)}
+                  className="h-16 border-b flex flex-col justify-center px-4 bg-white/95 group/trailer hover:bg-slate-50 transition-colors cursor-pointer"
+                  title="Kliknij dwukrotnie, aby otworzyć kartę przyczepy"
+                >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="inline-flex px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-900 font-mono text-[10px] font-black tracking-tight uppercase">
                       {trailer.plate}

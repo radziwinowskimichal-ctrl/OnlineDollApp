@@ -227,15 +227,6 @@ export const initialTrailers: Trailer[] = [
   { id: "t5", plate: "N-DC 990", type: "Laweta_Platforma", capacity: "2000kg", dimensions: "4m x 2m", tuvExpiry: addDays(today, 60).toISOString(), status: "available" },
 ];
 
-export const initialClients: Client[] = [
-  { id: "c1", name: "Cofibra", balance: 0, notes: "Stały klient", type: "company", nip: "1234567890" },
-  { id: "c2", name: "BMB", balance: 400, notes: "Zalega z płatnością za ostatni miesiąc", type: "company" },
-  { id: "c3", name: "Alexander", balance: 120, notes: "Opona przebita, dopłata 120 euro", type: "private" },
-];
+export const initialClients: Client[] = [];
 
-export const initialReservations: Reservation[] = [
-  { id: "r1", trailerId: "t_ndc130", clientId: "c1", startDate: subDays(today, 2).toISOString(), endDate: addDays(today, 2).toISOString(), status: "paid", invoiceNumber: "Re-Nr. 204221" },
-  { id: "r2", trailerId: "t_ndc135", clientId: "c2", startDate: subDays(today, 1).toISOString(), endDate: addDays(today, 1).toISOString(), status: "defect", defectNote: "Achse defekt" },
-  { id: "r3", trailerId: "t_ndc1112", clientId: "c3", startDate: today.toISOString(), endDate: addDays(today, 3).toISOString(), status: "invoiced", invoiceNumber: "Re-Nr. 204222" },
-  { id: "r4", trailerId: "t4", clientId: "c1", startDate: addDays(today, 5).toISOString(), endDate: addDays(today, 7).toISOString(), status: "paid", invoiceNumber: "Re-Nr. 204223" },
-];
+export const initialReservations: Reservation[] = [];

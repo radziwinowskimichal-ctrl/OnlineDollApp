@@ -30,7 +30,7 @@ export default function TrailerDetailsPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center">
         <h2 className="text-2xl font-bold mb-4">Nie znaleziono przyczepy</h2>
-        <Button onClick={() => router.push('/?tab=trailers')}>{t.back}</Button>
+        <Button onClick={() => router.back()}>{t.back}</Button>
       </div>
     );
   }
@@ -39,7 +39,7 @@ export default function TrailerDetailsPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 h-16 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/?tab=trailers')}>
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <Truck className="w-6 h-6 text-primary" />

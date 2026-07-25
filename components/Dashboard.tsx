@@ -1,5 +1,5 @@
 "use client";
-
+ 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useApp } from "@/lib/context";
 import { isToday, isBefore, addDays, parseISO, compareAsc, format } from "date-fns";
@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -21,16 +22,42 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface DashboardProps {
   onActionClick?: (action: string) => void;
 }
 
 export function Dashboard({ onActionClick }: DashboardProps) {
-  const { trailers, reservations, language } = useApp();
+  const { trailers, reservations, language, updateTrailer } = useApp();
   const t = translations[language as keyof typeof translations] || translations.pl;
   
   const [isTuvDialogOpen, setIsTuvDialogOpen] = useState(false);
+  const [isQuickEditOpen, setIsQuickEditOpen] = useState(false);
+  const [editingTrailer, setEditingTrailer] = useState<any>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear() + 2);
+
+  const handleQuickEdit = (trailer: any) => {
+    setEditingTrailer(trailer);
+    const now = new Date();
+    setSelectedMonth(now.getMonth());
+    setSelectedYear(now.getFullYear() + 2);
+    setIsQuickEditOpen(true);
+  };
+
+  const handleSaveTuv = () => {
+    if (!editingTrailer) return;
+    const newTuvDate = new Date(selectedYear, selectedMonth, 1, 12, 0, 0);
+    const updated = {
+      ...editingTrailer,
+      tuvExpiry: newTuvDate.toISOString(),
+    };
+    updateTrailer(updated);
+    setIsQuickEditOpen(false);
+    toast.success(language === "pl" ? "Termin TÜV został zaktualizowany!" : "TÜV-Termin wurde aktualisiert!");
+  };
 
   const today = new Date();
   
@@ -152,6 +179,7 @@ export function Dashboard({ onActionClick }: DashboardProps) {
                   <TableHead>{t.tuvExpiry}</TableHead>
                   <TableHead>{t.status}</TableHead>
                   <TableHead>{t.notes}</TableHead>
+                  <TableHead className="text-right">{language === "pl" ? "Akcja" : "Aktion"}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -182,12 +210,111 @@ export function Dashboard({ onActionClick }: DashboardProps) {
                        <TableCell className="max-w-[200px] text-xs text-muted-foreground">
                         {trailer.notes || "-"}
                        </TableCell>
+                       <TableCell className="text-right whitespace-nowrap">
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           className="h-7 px-2 font-black text-[10px] uppercase tracking-wider text-primary border-primary/20 hover:bg-primary/5 transition-colors gap-1"
+                           onClick={() => handleQuickEdit(trailer)}
+                         >
+                           <Wrench className="w-3 h-3" />
+                           {language === "pl" ? "Szybka Edycja" : "Schnellbearbeitung"}
+                         </Button>
+                       </TableCell>
                      </TableRow>
                    );
                 })}
               </TableBody>
             </Table>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* TUV Quick Edit Circular Calendar Dialog */}
+      <Dialog open={isQuickEditOpen} onOpenChange={setIsQuickEditOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "pl" ? "Szybka edycja terminu TÜV" : "Schnellbearbeitung TÜV-Termin"}
+            </DialogTitle>
+            <div className="text-sm text-slate-500 mt-1">
+              {editingTrailer?.plate} - {editingTrailer?.model || t.trailer}
+            </div>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center py-6">
+            <div className="relative w-64 h-64 rounded-full bg-slate-50/50 border border-slate-200 shadow-inner flex items-center justify-center select-none">
+              {/* Year & Month Selection Center */}
+              <div className="absolute flex flex-col items-center justify-center z-20 bg-white border border-slate-200 shadow-md rounded-full w-28 h-28 text-center">
+                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                  {language === "pl" ? "ROK" : "JAHR"}
+                </span>
+                <div className="flex items-center gap-2 my-1">
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedYear(prev => prev - 1)} 
+                    className="p-1 hover:bg-slate-100 rounded-md transition-colors text-slate-600 font-bold text-sm"
+                  >
+                    &larr;
+                  </button>
+                  <span className="font-black text-base text-slate-800">{selectedYear}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedYear(prev => prev + 1)} 
+                    className="p-1 hover:bg-slate-100 rounded-md transition-colors text-slate-600 font-bold text-sm"
+                  >
+                    &rarr;
+                  </button>
+                </div>
+                <span className="text-[10px] font-black text-primary uppercase tracking-wider">
+                  {language === "pl" 
+                    ? ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"][selectedMonth] 
+                    : ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"][selectedMonth]
+                  }
+                </span>
+              </div>
+
+              {/* 12 Months layout in a circle */}
+              {Array.from({ length: 12 }).map((_, i) => {
+                const angle = (i * 30 - 90) * (Math.PI / 180);
+                const x = Math.round(Math.cos(angle) * 88);
+                const y = Math.round(Math.sin(angle) * 88);
+                const isSelected = selectedMonth === i;
+                const monthNamesPl = ["Sty", "Lut", "Mar", "Kwi", "Maj", "Cze", "Lip", "Sie", "Wrze", "Paź", "Lis", "Gru"];
+                const monthNamesDe = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+                const monthLabel = language === "pl" ? monthNamesPl[i] : monthNamesDe[i];
+
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSelectedMonth(i)}
+                    style={{
+                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+                      left: "50%",
+                      top: "50%",
+                    }}
+                    className={`absolute rounded-full w-10 h-10 flex items-center justify-center text-[11px] font-black tracking-tighter uppercase transition-all duration-200 border ${
+                      isSelected
+                        ? "bg-primary text-white border-primary scale-110 shadow-lg shadow-primary/20 z-10"
+                        : "bg-white text-slate-600 border-slate-200/60 hover:bg-slate-50 hover:scale-105"
+                    }`}
+                  >
+                    {monthLabel}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsQuickEditOpen(false)}>
+              {language === "pl" ? "Anuluj" : "Abbrechen"}
+            </Button>
+            <Button onClick={handleSaveTuv}>
+              {language === "pl" ? "Zatwierdź" : "Bestätigen"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

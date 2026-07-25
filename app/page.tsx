@@ -21,16 +21,22 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const { language, currentUserId, profiles, logoutUser } = useApp();
   const t = translations[language as keyof typeof translations] || translations.pl;
-  const [activeTab, setActiveTab] = useState("calendar");
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "calendar");
 
   const me = profiles.find(p => p.id === currentUserId);
 
   useEffect(() => {
-    const tabFromUrl = searchParams.get("tab");
     if (tabFromUrl && tabFromUrl !== activeTab) {
-      setTimeout(() => setActiveTab(tabFromUrl), 0);
+      setActiveTab(tabFromUrl);
     }
-  }, [searchParams, activeTab]);
+  }, [searchParams]);
+
+  // Update URL so back navigation from /trailers/:id acts logically
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    window.history.replaceState(null, "", `/?tab=${tabId}`);
+  };
 
   if (!currentUserId) {
     return <LoginScreen />;
@@ -53,7 +59,7 @@ function HomeContent() {
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => handleTabChange(item.id)}
               className={cn(
                 "flex flex-col items-center gap-1 group w-full px-2 transition-all",
                 activeTab === item.id 
@@ -105,12 +111,12 @@ function HomeContent() {
             {/* Unified Dashboard / Stats at top */}
             {activeTab !== 'calendar' && (
               <section className="animate-in fade-in duration-700">
-                <Dashboard onActionClick={(action) => setActiveTab(action)} />
+                <Dashboard onActionClick={(action) => handleTabChange(action)} />
               </section>
             )}
 
             {/* View Switcher (Horizontal tabs for secondary nav) */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <div className="animate-in slide-in-from-bottom-4 duration-500">
                 <TabsContent value="daily" className="mt-0">
                   <div className="bg-card border rounded-2xl p-8 shadow-xl shadow-slate-200/50 min-h-[500px]">

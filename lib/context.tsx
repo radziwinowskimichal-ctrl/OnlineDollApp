@@ -57,38 +57,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [statusColors, setStatusColors] = useState<StatusColors>(defaultStatusColors);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
+// Load local settings & initial remote data on mount
   useEffect(() => {
-    const savedTrailers = localStorage.getItem("trailers");
-    const savedClients = localStorage.getItem("clients");
-    const savedReservations = localStorage.getItem("reservations");
-    const savedProfiles = localStorage.getItem("profiles");
     const savedCurrentUserId = localStorage.getItem("currentUserId");
     const savedLanguage = localStorage.getItem("language");
     const savedStatusColors = localStorage.getItem("statusColors");
 
-    queueMicrotask(() => {
-      if (savedTrailers) setTrailers(JSON.parse(savedTrailers));
-      if (savedClients) setClients(JSON.parse(savedClients));
-      if (savedReservations) setReservations(JSON.parse(savedReservations));
-      if (savedProfiles) setProfiles(JSON.parse(savedProfiles));
-      if (savedCurrentUserId) setCurrentUserId(savedCurrentUserId);
-      if (savedLanguage) setLanguage(savedLanguage);
-      if (savedStatusColors) setStatusColors(JSON.parse(savedStatusColors));
-      
-      setIsLoaded(true);
-    });
+    if (savedCurrentUserId) setCurrentUserId(savedCurrentUserId);
+    if (savedLanguage) setLanguage(savedLanguage);
+    if (savedStatusColors) setStatusColors(JSON.parse(savedStatusColors));
+
+    fetchData().then(() => setIsLoaded(true));
+
+    // Poll the API every 2 seconds to keep everyone synced
+    const interval = setInterval(() => {
+        fetchData();
+    }, 2000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  // Save to localStorage when state changes
+  const fetchData = async () => {
+    try {
+      const res = await fetch('/api/data');
+      if (res.ok) {
+        const data = await res.json();
+        setTrailers(data.trailers);
+        setClients(data.clients);
+        setReservations(data.reservations);
+        setProfiles(data.profiles);
+      }
+    } catch (e) {
+      console.error("Failed to sync data", e);
+    }
+  };
+
+  const dispatchAction = async (action: string, payload: any) => {
+    try {
+      await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload })
+      });
+      fetchData(); // Immediately refresh after mutation
+    } catch (e) {
+      console.error("Failed to sync mutation", action, e);
+    }
+  };
+
+  // Save local config settings when they change
   useEffect(() => {
-    // Check local storage across tabs for 'profiles' to sync "online/offline" status if needed.
-    // We'll keep it simple: just save local state.
     if (isLoaded) {
-      localStorage.setItem("trailers", JSON.stringify(trailers));
-      localStorage.setItem("clients", JSON.stringify(clients));
-      localStorage.setItem("reservations", JSON.stringify(reservations));
-      localStorage.setItem("profiles", JSON.stringify(profiles));
       if (currentUserId) {
         localStorage.setItem("currentUserId", currentUserId);
       } else {
@@ -97,27 +116,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("language", language);
       localStorage.setItem("statusColors", JSON.stringify(statusColors));
     }
-  }, [trailers, clients, reservations, profiles, currentUserId, language, statusColors, isLoaded]);
-
-  // Sync profiles state across tabs
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "profiles" && e.newValue) {
-        setProfiles(JSON.parse(e.newValue));
-      }
-    };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [currentUserId, language, statusColors, isLoaded]);
 
   const loginUser = (id: string) => {
     setCurrentUserId(id);
-    setProfiles(prev => prev.map(p => p.id === id ? { ...p, isOnline: true } : p));
+    const updatedProfiles = profiles.map(p => p.id === id ? { ...p, isOnline: true } : p);
+    setProfiles(updatedProfiles);
+    dispatchAction('UPDATE_PROFILE', { id, isOnline: true, name: profiles.find(p=>p.id===id)?.name });
   };
 
   const logoutUser = () => {
     if (currentUserId) {
       setProfiles(prev => prev.map(p => p.id === currentUserId ? { ...p, isOnline: false } : p));
+      dispatchAction('UPDATE_PROFILE', { id: currentUserId, isOnline: false, name: profiles.find(p=>p.id===currentUserId)?.name });
     }
     setCurrentUserId(null);
   };
@@ -135,72 +146,85 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addReservation = (res: Reservation) => {
     const historyEntry = getHistoryEntry("created");
-    setReservations((prev) => [...prev, { ...res, history: [historyEntry] }]);
+    const newRes = { ...res, history: [historyEntry] };
+    setReservations((prev) => [...prev, newRes]);
+    dispatchAction('ADD_RESERVATION', newRes);
   };
 
   const updateReservation = (res: Reservation, action?: ReservationHistoryEntry["action"]) => {
-    setReservations((prev) => prev.map((r) => {
-      if (r.id === res.id) {
-        let updatedRes = { ...res };
-        if (action) {
-          const historyEntry = getHistoryEntry(action);
-          updatedRes.history = [...(r.history || []), historyEntry];
-        }
-        return updatedRes;
-      }
-      return r;
-    }));
+    let finalRes = { ...res };
+    if (action) {
+       const existing = reservations.find(r => r.id === res.id);
+       const historyEntry = getHistoryEntry(action);
+       finalRes.history = [...(existing?.history || []), historyEntry];
+    }
+    setReservations((prev) => prev.map((r) => r.id === finalRes.id ? finalRes : r));
+    dispatchAction('UPDATE_RESERVATION', finalRes);
   };
 
   const logReservationAction = (reservationId: string, action: ReservationHistoryEntry["action"]) => {
-    setReservations((prev) => prev.map((r) => {
-      if (r.id === reservationId) {
-        const historyEntry = getHistoryEntry(action);
-        return {
-          ...r,
-          history: [...(r.history || []), historyEntry]
-        };
-      }
-      return r;
-    }));
+    const existing = reservations.find(r => r.id === reservationId);
+    if (existing) {
+       const historyEntry = getHistoryEntry(action);
+       const updated = { ...existing, history: [...(existing.history || []), historyEntry] };
+       setReservations((prev) => prev.map((r) => r.id === reservationId ? updated : r));
+       dispatchAction('UPDATE_RESERVATION', updated);
+    }
   };
 
   const deleteReservation = (id: string) => {
     setReservations((prev) => prev.filter((r) => r.id !== id));
+    dispatchAction('DELETE_RESERVATION', { id });
   };
 
   const updateTrailerStatus = (id: string, status: Trailer["status"]) => {
-    setTrailers((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+    const existing = trailers.find(t => t.id === id);
+    if (existing) {
+       const updated = { ...existing, status };
+       setTrailers((prev) => prev.map((t) => (t.id === id ? updated : t)));
+       dispatchAction('UPDATE_TRAILER', updated);
+    }
   };
 
   const addTrailer = (trailer: Trailer) => {
     setTrailers((prev) => [...prev, trailer]);
+    dispatchAction('ADD_TRAILER', trailer);
   };
 
   const updateTrailer = (trailer: Trailer) => {
     setTrailers((prev) => prev.map((t) => (t.id === trailer.id ? trailer : t)));
+    dispatchAction('UPDATE_TRAILER', trailer);
   };
 
   const deleteTrailer = (id: string) => {
     setTrailers((prev) => prev.filter((t) => t.id !== id));
+    dispatchAction('DELETE_TRAILER', { id });
   };
 
   const resetTrailers = () => {
     setTrailers([...initialTrailers]);
+    dispatchAction('RESET_TRAILERS', {});
     const t = translations[language as keyof typeof translations];
     toast.success(t.trailersSynced);
   };
 
   const updateClientBalance = (id: string, amount: number) => {
-    setClients((prev) => prev.map((c) => (c.id === id ? { ...c, balance: c.balance + amount } : c)));
+    const existing = clients.find(c => c.id === id);
+    if (existing) {
+       const updated = { ...existing, balance: existing.balance + amount };
+       setClients((prev) => prev.map((c) => (c.id === id ? updated : c)));
+       dispatchAction('UPDATE_CLIENT', updated);
+    }
   };
 
   const addClient = (client: Client) => {
     setClients((prev) => [...prev, client]);
+    dispatchAction('ADD_CLIENT', client);
   };
 
   const updateClient = (client: Client) => {
     setClients((prev) => prev.map((c) => (c.id === client.id ? client : c)));
+    dispatchAction('UPDATE_CLIENT', client);
   };
 
   const updateStatusColor = (status: Reservation["status"], color: ColorOption) => {
