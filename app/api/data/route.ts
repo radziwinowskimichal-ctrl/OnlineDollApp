@@ -35,6 +35,8 @@ export async function POST(req: Request) {
           db.prepare('INSERT INTO clients (id, data) VALUES (?, ?)').run(payload.id, JSON.stringify(payload));
       } else if (action === 'UPDATE_CLIENT') {
           db.prepare('UPDATE clients SET data = ? WHERE id = ?').run(JSON.stringify(payload), payload.id);
+      } else if (action === 'DELETE_CLIENT') {
+          db.prepare('DELETE FROM clients WHERE id = ?').run(payload.id);
       } else if (action === 'UPDATE_PROFILE') {
           db.prepare('UPDATE profiles SET data = ? WHERE id = ?').run(JSON.stringify(payload), payload.id);
       }

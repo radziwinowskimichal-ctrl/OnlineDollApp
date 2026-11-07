@@ -4,12 +4,12 @@ import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/context";
 import { colorClassMap, badgeColorClassMap } from "@/lib/colors";
-import { format, addDays, startOfToday, parseISO, isWithinInterval, isSameDay } from "date-fns";
+import { format, addDays, startOfToday, parseISO, isWithinInterval, isSameDay, isBefore } from "date-fns";
 import { pl, enUS, de } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus, Check, ChevronsUpDown, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Check, ChevronsUpDown, Search, CheckCircle2, FileSignature } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,8 @@ import {
 } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { translations } from "@/lib/translations";
+import { ReleaseTrailerDialog } from "./ReleaseTrailerDialog";
+import { ReturnTrailerDialog } from "./ReturnTrailerDialog";
 
 export function TrailerCalendar() {
   const { trailers, reservations, clients, addReservation, addClient, language, currentUserId, profiles, updateReservation, deleteReservation, statusColors, checkTrailerAvailability } = useApp();
@@ -82,6 +84,10 @@ export function TrailerCalendar() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditingReservation, setIsEditingReservation] = useState(false);
   const [viewingReservationId, setViewingReservationId] = useState<string | null>(null);
+  const [isReleaseDialogOpen, setIsReleaseDialogOpen] = useState(false);
+  const [selectedReleaseReservation, setSelectedReleaseReservation] = useState<any>(null);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [selectedReturnReservation, setSelectedReturnReservation] = useState<any>(null);
   const [selectedTrailerId, setSelectedTrailerId] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   
@@ -103,6 +109,7 @@ export function TrailerCalendar() {
   const [newClientPhone, setNewClientPhone] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
   const [newClientNip, setNewClientNip] = useState("");
+  const [newClientAddress, setNewClientAddress] = useState("");
 
   const getReservationsForDay = (trailerId: string, date: Date) => {
     return reservations.filter(r => {
@@ -122,10 +129,20 @@ export function TrailerCalendar() {
   };
 
   const handleCellClick = (trailerId: string, date: Date) => {
+    const currentToday = startOfToday();
+    if (isBefore(date, currentToday)) {
+      toast.error(
+        language === "pl"
+          ? "Nie można utworzyć rezerwacji w terminie wcześniejszym niż dzień obecny!"
+          : "Reservierungen können nicht vor dem aktuellen Tag vorgenommen werden!"
+      );
+      return;
+    }
+
     setSelectedTrailerId(trailerId);
     setSelectedDate(date);
     setEndDate(format(addDays(date, 1), "yyyy-MM-dd"));
-    setPickupTime("08:00");
+    setPickupTime(isSameDay(date, new Date()) ? format(new Date(), "HH:mm") : "08:00");
     setReturnTime("17:30");
     setClientId("");
     setStatus("paid");
@@ -166,16 +183,37 @@ export function TrailerCalendar() {
       return;
     }
 
+    const currentToday = startOfToday();
+    const existingRes = reservations.find(r => r.id === viewingReservationId);
+    const existingStart = existingRes ? parseISO(existingRes.startDate) : null;
+    const isStartDateChanged = existingStart && !isSameDay(existingStart, selectedDate);
+
+    if (isBefore(selectedDate, currentToday) && isStartDateChanged) {
+      toast.error(
+        language === "pl"
+          ? "Nie można przenieść rezerwacji na termin wcześniejszy niż dzień obecny!"
+          : "Das Startdatum darf nicht vor dem aktuellen Tag liegen!"
+      );
+      return;
+    }
+
     const startDateTime = new Date(`${format(selectedDate, "yyyy-MM-dd")}T${pickupTime}:00`);
     const endDateTime = new Date(`${endDate}T${returnTime}:00`);
     
+    if (endDateTime <= startDateTime) {
+      toast.error(
+        language === "pl"
+          ? "Data i godzina zwrotu muszą być późniejsze niż data i godzina odbioru!"
+          : "Das Rückgabedatum muss nach dem Abholdatum liegen!"
+      );
+      return;
+    }
+
     // Check collision
     if (!checkTrailerAvailability(selectedTrailerId, startDateTime, endDateTime, viewingReservationId)) {
       toast.error("Wskazany termin koliduje z inną rezerwacją. Uwzględnij też 60 minut przerwy.");
       return;
     }
-    
-    const existingRes = reservations.find(r => r.id === viewingReservationId);
     
     // Check if status changed or just general edit
     const isStatusChanged = existingRes?.status !== status;
@@ -221,14 +259,37 @@ export function TrailerCalendar() {
       return;
     }
 
+    const currentToday = startOfToday();
+    if (isBefore(selectedDate, currentToday)) {
+      toast.error(
+        language === "pl"
+          ? "Nie można utworzyć rezerwacji w terminie wcześniejszym niż dzień obecny!"
+          : "Das Startdatum darf nicht vor dem aktuellen Tag liegen!"
+      );
+      return;
+    }
+
     const startDateTime = new Date(`${format(selectedDate, "yyyy-MM-dd")}T${pickupTime}:00`);
     const endDateTime = new Date(`${endDate}T${returnTime}:00`);
+
+    if (endDateTime <= startDateTime) {
+      toast.error(
+        language === "pl"
+          ? "Data i godzina zwrotu muszą być późniejsze niż data i godzina odbioru!"
+          : "Das Rückgabedatum muss nach dem Abholdatum liegen!"
+      );
+      return;
+    }
 
     // Check collision
     if (!checkTrailerAvailability(selectedTrailerId, startDateTime, endDateTime)) {
       toast.error("Wskazany termin koliduje z inną rezerwacją. Uwzględnij też 60 minut przerwy.");
       return;
     }
+
+    const selectedClient = clients.find(c => c.id === clientId);
+    const isCompany = selectedClient?.type === "company";
+    const initialDeposit = isCompany ? 1000 : 200;
 
     addReservation({
       id: Math.random().toString(36).substring(7),
@@ -239,6 +300,13 @@ export function TrailerCalendar() {
       status,
       invoiceNumber: invoiceNumber || undefined,
       defectNote: defectNote || undefined,
+      agreement: {
+        deposits: {
+          general: initialDeposit,
+          total: initialDeposit,
+        },
+        paymentMethod: "BAR",
+      }
     });
 
     toast.success(t.reservationAdded);
@@ -257,9 +325,10 @@ export function TrailerCalendar() {
       balance: 0,
       notes: "",
       type: newClientType,
-      phone: newClientPhone,
-      email: newClientEmail,
-      nip: newClientType === "company" ? newClientNip : undefined,
+      phone: newClientPhone || undefined,
+      email: newClientEmail || undefined,
+      nip: newClientType === "company" ? (newClientNip || undefined) : undefined,
+      address: newClientAddress || undefined,
     };
 
     addClient(newClient);
@@ -271,6 +340,7 @@ export function TrailerCalendar() {
     setNewClientPhone("");
     setNewClientEmail("");
     setNewClientNip("");
+    setNewClientAddress("");
     
     toast.success(t.clientAdded);
   };
@@ -406,32 +476,39 @@ export function TrailerCalendar() {
 
             {/* Days Columns */}
             <div className="flex" ref={calendarDaysRef}>
-              {days.map(day => (
-              <div key={day.toISOString()} className="w-24 flex-shrink-0 border-r last:border-r-0">
-                <div className={cn(
-                  "h-12 border-b flex flex-col items-center justify-center transition-colors sticky top-0 z-20 shadow-sm",
-                  isSameDay(day, today) ? "bg-primary/5 border-b-primary/30" : "bg-white"
-                )}>
-                  <div className={cn("text-[9px] font-black uppercase tracking-widest mb-0.5", isSameDay(day, today) ? "text-primary" : "text-slate-400")}>
-                    {format(day, "EEE", { locale: dateLocale })}
-                  </div>
-                  <div className={cn("text-[11px] font-black", isSameDay(day, today) ? "text-primary" : "text-slate-800")}>
-                    {format(day, "d MMM", { locale: dateLocale })}
-                  </div>
-                </div>
-                
-                {filteredTrailers.map(trailer => {
-                  const dayReservations = getReservationsForDay(trailer.id, day);
-                  
-                  return (
-                    <div 
-                      key={`${trailer.id}-${day.toISOString()}`} 
-                      className="h-16 border-b relative cursor-pointer hover:bg-slate-50/50 transition-colors group"
-                      onClick={() => handleCellClick(trailer.id, day)}
-                    >
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
-                        <Plus className="h-4 w-4 text-slate-300" />
+              {days.map(day => {
+                const isPast = isBefore(day, today);
+                return (
+                  <div key={day.toISOString()} className={cn("w-24 flex-shrink-0 border-r last:border-r-0", isPast && "bg-slate-50/40")}>
+                    <div className={cn(
+                      "h-12 border-b flex flex-col items-center justify-center transition-colors sticky top-0 z-20 shadow-sm",
+                      isSameDay(day, today) ? "bg-primary/5 border-b-primary/30" : isPast ? "bg-slate-100 text-slate-400" : "bg-white"
+                    )}>
+                      <div className={cn("text-[9px] font-black uppercase tracking-widest mb-0.5", isSameDay(day, today) ? "text-primary" : "text-slate-400")}>
+                        {format(day, "EEE", { locale: dateLocale })}
                       </div>
+                      <div className={cn("text-[11px] font-black", isSameDay(day, today) ? "text-primary" : isPast ? "text-slate-400" : "text-slate-800")}>
+                        {format(day, "d MMM", { locale: dateLocale })}
+                      </div>
+                    </div>
+                    
+                    {filteredTrailers.map(trailer => {
+                      const dayReservations = getReservationsForDay(trailer.id, day);
+                      
+                      return (
+                        <div 
+                          key={`${trailer.id}-${day.toISOString()}`} 
+                          className={cn(
+                            "h-16 border-b relative transition-colors group",
+                            isPast ? "bg-slate-50/70 cursor-not-allowed opacity-80" : "cursor-pointer hover:bg-slate-50/50"
+                          )}
+                          onClick={() => handleCellClick(trailer.id, day)}
+                        >
+                          {!isPast && (
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity">
+                              <Plus className="h-4 w-4 text-slate-300" />
+                            </div>
+                          )}
                       
                       {dayReservations.map(res => {
                         const client = clients.find(c => c.id === res.clientId);
@@ -499,7 +576,8 @@ export function TrailerCalendar() {
                   );
                 })}
               </div>
-            ))}
+            );
+          })}
             </div>
           </div>
           <ScrollBar orientation="horizontal" />
@@ -564,6 +642,15 @@ export function TrailerCalendar() {
                   onChange={(e) => setNewClientEmail(e.target.value)} 
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="clientAddress">{language === "pl" ? "Adres (Ulica, Kod i Miasto)" : "Adresse (Straße, PLZ, Ort)"}</Label>
+                <Input 
+                  id="clientAddress" 
+                  value={newClientAddress} 
+                  onChange={(e) => setNewClientAddress(e.target.value)} 
+                  placeholder={language === "pl" ? "np. Berliner Str. 12, 10115 Berlin" : "z.B. Berliner Str. 12, 10115 Berlin"}
+                />
+              </div>
             </div>
           ) : (
             <div className="grid gap-4 py-4">
@@ -626,6 +713,40 @@ export function TrailerCalendar() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
+                  <Label htmlFor="create-startDate">{t.startDate}</Label>
+                  <Input 
+                    id="create-startDate" 
+                    type="date" 
+                    value={selectedDate ? format(selectedDate, "yyyy-MM-dd") : ""} 
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      const parsed = parseISO(e.target.value);
+                      if (isBefore(parsed, startOfToday())) {
+                        toast.error(
+                          language === "pl"
+                            ? "Nie można wybrać daty wcześniejszej niż dzień obecny!"
+                            : "Das Startdatum darf nicht in der Vergangenheit liegen!"
+                        );
+                        return;
+                      }
+                      setSelectedDate(parsed);
+                    }} 
+                    min={format(new Date(), "yyyy-MM-dd")}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="endDate">{t.returnDate}</Label>
+                  <Input 
+                    id="endDate" 
+                    type="date" 
+                    value={endDate} 
+                    onChange={(e) => setEndDate(e.target.value)} 
+                    min={selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
                   <Label>{t.pickupTime}</Label>
                   <Input 
                     type="time" 
@@ -641,16 +762,6 @@ export function TrailerCalendar() {
                     onChange={(e) => setReturnTime(e.target.value)} 
                   />
                 </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="endDate">{t.returnDate}</Label>
-                <Input 
-                  id="endDate" 
-                  type="date" 
-                  value={endDate} 
-                  onChange={(e) => setEndDate(e.target.value)} 
-                  min={selectedDate ? format(selectedDate, "yyyy-MM-dd") : ""}
-                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="status">{t.status}</Label>
@@ -767,7 +878,20 @@ export function TrailerCalendar() {
                         id="edit-startDate" 
                         type="date" 
                         value={selectedDate ? format(selectedDate, "yyyy-MM-dd") : ""} 
-                        onChange={(e) => setSelectedDate(parseISO(e.target.value))} 
+                        onChange={(e) => {
+                          if (!e.target.value) return;
+                          const parsed = parseISO(e.target.value);
+                          if (isBefore(parsed, startOfToday())) {
+                            toast.error(
+                              language === "pl"
+                                ? "Nie można przenieść rezerwacji na termin wcześniejszy niż dzień obecny!"
+                                : "Das Startdatum darf nicht vor dem aktuellen Tag liegen!"
+                            );
+                            return;
+                          }
+                          setSelectedDate(parsed);
+                        }} 
+                        min={format(new Date(), "yyyy-MM-dd")}
                       />
                     </div>
                     <div className="grid gap-2">
@@ -777,7 +901,7 @@ export function TrailerCalendar() {
                         type="date" 
                         value={endDate} 
                         onChange={(e) => setEndDate(e.target.value)} 
-                        min={selectedDate ? format(selectedDate, "yyyy-MM-dd") : ""}
+                        min={selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")}
                       />
                     </div>
                   </div>
@@ -891,6 +1015,25 @@ export function TrailerCalendar() {
                   </div>
                 )}
 
+                {res.agreement && (
+                  <div className="grid grid-cols-3 items-center gap-4 bg-muted/40 p-3 rounded-lg border">
+                    <span className="font-semibold text-xs">{language === 'pl' ? 'Rozliczenie' : 'Abrechnung'}:</span>
+                    <div className="col-span-2 text-xs space-y-1">
+                      {res.agreement.prices?.total ? (
+                        <p className="font-bold text-emerald-700">
+                          {language === 'pl' ? 'Kwota wynajmu' : 'Mietpreis'}: {Number(res.agreement.prices.total).toFixed(2)} €
+                          {res.agreement.prices.daily ? ` (${res.agreement.prices.daily} €/${language === 'pl' ? 'dzień' : 'Tag'})` : ''}
+                        </p>
+                      ) : null}
+                      {(res.agreement.deposits?.total || res.agreement.deposits?.general) ? (
+                        <p className="text-muted-foreground font-medium">
+                          {language === 'pl' ? 'Kaucja' : 'Kaution'}: {res.agreement.deposits.total || res.agreement.deposits.general} € ({res.agreement.paymentMethod || 'BAR'})
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+
                 {res.history && res.history.length > 0 && (
                   <div className="mt-6">
                      <div className="p-3 bg-muted/50 rounded-lg space-y-2 border border-muted-foreground/10">
@@ -932,10 +1075,46 @@ export function TrailerCalendar() {
                 </div>
               </>
             ) : (
-              <>
-                <Button variant="outline" onClick={handleEditClick}>{t.edit}</Button>
-                <Button onClick={() => setIsViewDialogOpen(false)}>{t.close}</Button>
-              </>
+              <div className="flex sm:justify-between items-center w-full">
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleEditClick}>{t.edit}</Button>
+                  {(() => {
+                    const currentRes = reservations.find(r => r.id === viewingReservationId);
+                    if (!currentRes || currentRes.status === "completed" || currentRes.status === "cancelled") {
+                      return null;
+                    }
+                    if (currentRes.status === "active") {
+                      return (
+                        <Button 
+                          className="gap-1.5"
+                          onClick={() => {
+                            setSelectedReturnReservation(currentRes);
+                            setIsViewDialogOpen(false);
+                            setIsReturnDialogOpen(true);
+                          }}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          {t.markAsCompleted}
+                        </Button>
+                      );
+                    }
+                    return (
+                      <Button 
+                        className="gap-1.5"
+                        onClick={() => {
+                          setSelectedReleaseReservation(currentRes);
+                          setIsViewDialogOpen(false);
+                          setIsReleaseDialogOpen(true);
+                        }}
+                      >
+                        <FileSignature className="w-4 h-4" />
+                        {t.releaseTrailer}
+                      </Button>
+                    );
+                  })()}
+                </div>
+                <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>{t.close}</Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>
@@ -954,6 +1133,23 @@ export function TrailerCalendar() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReleaseTrailerDialog 
+        reservation={selectedReleaseReservation}
+        isOpen={isReleaseDialogOpen}
+        onClose={() => {
+          setIsReleaseDialogOpen(false);
+          setSelectedReleaseReservation(null);
+        }}
+      />
+      <ReturnTrailerDialog 
+        reservation={selectedReturnReservation}
+        isOpen={isReturnDialogOpen}
+        onClose={() => {
+          setIsReturnDialogOpen(false);
+          setSelectedReturnReservation(null);
+        }}
+      />
     </div>
   );
 }

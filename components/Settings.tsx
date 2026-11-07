@@ -83,6 +83,8 @@ export function Settings() {
     { key: "completed" as const, label: globalT.colorCompleted },
   ];
 
+  if (!mounted) return null;
+
   return (
     <Sheet>
       <SheetTrigger 

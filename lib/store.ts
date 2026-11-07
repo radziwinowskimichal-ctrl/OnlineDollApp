@@ -61,15 +61,24 @@ export interface Client {
   notes: string;
   type: "private" | "company";
   phone?: string;
+  phone2?: string;
   email?: string;
   nip?: string;
+  contactPerson?: string;
   address?: string;
+  street?: string;
+  postalCode?: string;
+  city?: string;
+  country?: string;
+  status?: "active" | "vip" | "blocked";
+  discountPercent?: number;
   driverLicenseClass?: string;
   driverLicenseIssueDate?: string;
   driverLicenseIssuePlace?: string;
   idCardNumber?: string;
   idCardExpiry?: string;
   idCardIssuePlace?: string;
+  createdAt?: string;
 }
 
 export interface RentalAgreement {

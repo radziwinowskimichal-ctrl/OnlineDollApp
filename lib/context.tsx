@@ -26,6 +26,7 @@ interface AppState {
   currentUserId: string | null;
   language: string;
   statusColors: StatusColors;
+  isHydrated: boolean;
   addReservation: (res: Reservation) => void;
   updateReservation: (res: Reservation, action?: ReservationHistoryEntry["action"]) => void;
   deleteReservation: (id: string) => void;
@@ -37,6 +38,7 @@ interface AppState {
   updateClientBalance: (id: string, amount: number) => void;
   addClient: (client: Client) => void;
   updateClient: (client: Client) => void;
+  deleteClient: (id: string) => void;
   setLanguage: (lang: string) => void;
   updateStatusColor: (status: Reservation["status"], color: ColorOption) => void;
   loginUser: (id: string) => void;
@@ -53,44 +55,78 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [reservations, setReservations] = useState<Reservation[]>(initialReservations);
   const [profiles, setProfiles] = useState<UserProfile[]>(initialProfiles);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [language, setLanguage] = useState<string>("de");
+  const [language, setLanguage] = useState<string>("pl");
   const [statusColors, setStatusColors] = useState<StatusColors>(defaultStatusColors);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-
-// Load local settings & initial remote data on mount
-  useEffect(() => {
-    const savedCurrentUserId = localStorage.getItem("currentUserId");
-    const savedLanguage = localStorage.getItem("language");
-    const savedStatusColors = localStorage.getItem("statusColors");
-
-    if (savedCurrentUserId) setCurrentUserId(savedCurrentUserId);
-    if (savedLanguage) setLanguage(savedLanguage);
-    if (savedStatusColors) setStatusColors(JSON.parse(savedStatusColors));
-
-    fetchData().then(() => setIsLoaded(true));
-
-    // Poll the API every 2 seconds to keep everyone synced
-    const interval = setInterval(() => {
-        fetchData();
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const fetchData = async () => {
     try {
       const res = await fetch('/api/data');
       if (res.ok) {
         const data = await res.json();
-        setTrailers(data.trailers);
-        setClients(data.clients);
-        setReservations(data.reservations);
-        setProfiles(data.profiles);
+        setTrailers(prev => JSON.stringify(prev) === JSON.stringify(data.trailers) ? prev : data.trailers);
+        setClients(prev => JSON.stringify(prev) === JSON.stringify(data.clients) ? prev : data.clients);
+        setReservations(prev => JSON.stringify(prev) === JSON.stringify(data.reservations) ? prev : data.reservations);
+        setProfiles(prev => JSON.stringify(prev) === JSON.stringify(data.profiles) ? prev : data.profiles);
       }
     } catch (e) {
       console.error("Failed to sync data", e);
     }
   };
+
+  // Load initial remote data on mount and start polling
+  useEffect(() => {
+    let isSubscribed = true;
+
+    // Load client-side storage safely after mount in microtask to prevent SSR mismatch
+    setTimeout(() => {
+      if (!isSubscribed) return;
+      const savedUserId = localStorage.getItem("currentUserId");
+      const savedLang = localStorage.getItem("language");
+      const savedColors = localStorage.getItem("statusColors");
+
+      if (savedUserId) setCurrentUserId(savedUserId);
+      if (savedLang) setLanguage(savedLang);
+      if (savedColors) {
+        try {
+          setStatusColors(JSON.parse(savedColors));
+        } catch {}
+      }
+      setIsHydrated(true);
+    }, 0);
+
+    async function loadInitialData() {
+      try {
+        const res = await fetch('/api/data');
+        if (res.ok && isSubscribed) {
+          const data = await res.json();
+          setTrailers(prev => JSON.stringify(prev) === JSON.stringify(data.trailers) ? prev : data.trailers);
+          setClients(prev => JSON.stringify(prev) === JSON.stringify(data.clients) ? prev : data.clients);
+          setReservations(prev => JSON.stringify(prev) === JSON.stringify(data.reservations) ? prev : data.reservations);
+          setProfiles(prev => JSON.stringify(prev) === JSON.stringify(data.profiles) ? prev : data.profiles);
+        }
+      } catch (e) {
+        console.error("Failed to sync data", e);
+      } finally {
+        if (isSubscribed) {
+          setIsLoaded(true);
+        }
+      }
+    }
+
+    loadInitialData();
+
+    // Poll the API every 2 seconds to keep everyone synced
+    const interval = setInterval(() => {
+      fetchData();
+    }, 2000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const dispatchAction = async (action: string, payload: any) => {
     try {
@@ -107,7 +143,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Save local config settings when they change
   useEffect(() => {
-    if (isLoaded) {
+    if (isHydrated) {
       if (currentUserId) {
         localStorage.setItem("currentUserId", currentUserId);
       } else {
@@ -116,7 +152,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("language", language);
       localStorage.setItem("statusColors", JSON.stringify(statusColors));
     }
-  }, [currentUserId, language, statusColors, isLoaded]);
+  }, [currentUserId, language, statusColors, isHydrated]);
 
   const loginUser = (id: string) => {
     setCurrentUserId(id);
@@ -227,6 +263,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatchAction('UPDATE_CLIENT', client);
   };
 
+  const deleteClient = (id: string) => {
+    setClients((prev) => prev.filter((c) => c.id !== id));
+    dispatchAction('DELETE_CLIENT', { id });
+  };
+
   const updateStatusColor = (status: Reservation["status"], color: ColorOption) => {
     setStatusColors((prev) => ({ ...prev, [status]: color }));
   };
@@ -255,6 +296,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentUserId,
       language, 
       statusColors,
+      isHydrated,
       addReservation, 
       updateReservation,
       deleteReservation,
@@ -266,6 +308,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateClientBalance, 
       addClient, 
       updateClient,
+      deleteClient,
       setLanguage,
       updateStatusColor,
       loginUser,

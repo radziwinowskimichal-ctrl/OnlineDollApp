@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 
 function HomeContent() {
   const searchParams = useSearchParams();
-  const { language, currentUserId, profiles, logoutUser } = useApp();
+  const { language, currentUserId, profiles, logoutUser, isHydrated } = useApp();
   const t = translations[language as keyof typeof translations] || translations.pl;
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "calendar");
@@ -28,15 +28,25 @@ function HomeContent() {
 
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
+      setTimeout(() => {
+        setActiveTab(tabFromUrl);
+      }, 0);
     }
-  }, [searchParams]);
+  }, [tabFromUrl, activeTab]);
 
   // Update URL so back navigation from /trailers/:id acts logically
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
     window.history.replaceState(null, "", `/?tab=${tabId}`);
   };
+
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   if (!currentUserId) {
     return <LoginScreen />;

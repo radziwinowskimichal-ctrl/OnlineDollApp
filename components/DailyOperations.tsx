@@ -28,6 +28,14 @@ export function DailyOperations() {
   const todayReturns = reservations.filter(r => isToday(parseISO(r.endDate)) && r.status !== "completed" && r.status !== "cancelled");
 
   const handleComplete = (res: Reservation) => {
+    if (res.status !== "active") {
+      toast.error(
+        language === "pl"
+          ? "Nie można odebrać przyczepy przed jej wydaniem! Najpierw wydaj przyczepę."
+          : "Der Anhänger muss zuerst ausgegeben werden!"
+      );
+      return;
+    }
     setSelectedReservation(res);
     setReturnDialogOpen(true);
   };
@@ -40,6 +48,7 @@ export function DailyOperations() {
   const renderReservationCard = (res: Reservation, isPickup: boolean) => {
     const trailer = trailers.find(t => t.id === res.trailerId);
     const client = clients.find(c => c.id === res.clientId);
+    const isReleased = res.status === "active";
 
     return (
       <Card key={res.id} className="overflow-hidden transition-all hover:shadow-md">
@@ -86,7 +95,7 @@ export function DailyOperations() {
                   {t.reservationDetails}
                 </h4>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge 
                       variant="outline" 
                       className={cn(badgeColorClassMap[statusColors[res.status as keyof typeof statusColors]])}
@@ -96,6 +105,11 @@ export function DailyOperations() {
                       {res.status === 'defect' && t.defect}
                       {res.status === 'active' && t.active}
                     </Badge>
+                    {!isPickup && !isReleased && (
+                      <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300 font-bold">
+                        {language === "pl" ? "Wymaga wydania" : "Erfordert Ausgabe"}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm font-medium">
                     {isPickup ? t.pickupTime : t.returnTime}: {format(parseISO(isPickup ? res.startDate : res.endDate), "HH:mm")}
@@ -105,6 +119,21 @@ export function DailyOperations() {
                   )}
                   {res.defectNote && (
                     <p className="text-sm text-destructive">{t.defectNote}: {res.defectNote}</p>
+                  )}
+                  {res.agreement && (
+                    <div className="pt-2 border-t border-dashed text-xs space-y-1">
+                      {res.agreement.prices?.total ? (
+                        <p className="font-bold text-emerald-700">
+                          {language === 'pl' ? 'Kwota wynajmu' : 'Mietpreis'}: {Number(res.agreement.prices.total).toFixed(2)} €
+                          {res.agreement.prices.daily ? ` (${res.agreement.prices.daily} €/${language === 'pl' ? 'dzień' : 'Tag'})` : ''}
+                        </p>
+                      ) : null}
+                      {(res.agreement.deposits?.total || res.agreement.deposits?.general) ? (
+                        <p className="text-muted-foreground font-medium">
+                          {language === 'pl' ? 'Kaucja' : 'Kaution'}: {res.agreement.deposits.total || res.agreement.deposits.general} € ({res.agreement.paymentMethod || 'BAR'})
+                        </p>
+                      ) : null}
+                    </div>
                   )}
                 </div>
               </div>
@@ -116,6 +145,22 @@ export function DailyOperations() {
                   <FileSignature className="w-4 h-4" />
                   {t.releaseTrailer}
                 </Button>
+              ) : !isReleased ? (
+                <div className="flex items-center gap-2">
+                  <Button 
+                    disabled 
+                    variant="outline" 
+                    className="opacity-60 cursor-not-allowed gap-2"
+                    title={language === "pl" ? "Przyczepa musi zostać najpierw wydana" : "Der Anhänger muss zuerst ausgegeben werden"}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {t.markAsCompleted}
+                  </Button>
+                  <Button onClick={() => handleRelease(res)} className="gap-2">
+                    <FileSignature className="w-4 h-4" />
+                    {language === "pl" ? "Wydaj najpierw" : "Zuerst ausgeben"}
+                  </Button>
+                </div>
               ) : (
                 <Button onClick={() => handleComplete(res)} className="gap-2">
                   <CheckCircle2 className="w-4 h-4" />

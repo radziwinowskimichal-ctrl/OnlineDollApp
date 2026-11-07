@@ -12,6 +12,7 @@ import { printDocument } from "@/lib/print";
 import { Reservation, Client, ReturnProtocolState } from "@/lib/store";
 import { toast } from "sonner";
 import { Printer, Archive } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { PrintableReturnProtocol } from "./PrintableReturnProtocol";
 import { translations } from "@/lib/translations";
 import { format } from "date-fns";
@@ -62,6 +63,7 @@ export function ReturnTrailerDialog({ reservation, isOpen, onClose }: ReturnTrai
   if (!reservation || !client) return null;
 
   const trailer = trailers.find(t => t.id === reservation.trailerId);
+  const isReleased = reservation.status === "active";
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -82,6 +84,15 @@ export function ReturnTrailerDialog({ reservation, isOpen, onClose }: ReturnTrai
   };
 
   const handleSave = () => {
+    if (!isReleased) {
+      toast.error(
+        language === "pl"
+          ? "Nie można odebrać przyczepy przed jej wydaniem! Najpierw wydaj przyczepę."
+          : "Der Anhänger muss zuerst ausgegeben werden!"
+      );
+      return;
+    }
+
     updateReservation({
       ...reservation,
       status: "completed",
@@ -132,6 +143,20 @@ export function ReturnTrailerDialog({ reservation, isOpen, onClose }: ReturnTrai
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {!isReleased && (
+              <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-md flex items-center justify-between text-sm">
+                <div>
+                  <span className="font-bold">{language === "pl" ? "Uwaga: " : "Achtung: "}</span>
+                  {language === "pl" 
+                    ? "Ta przyczepa nie została jeszcze wydana. Zablokowano możliwość odbioru i archiwizacji do momentu wydania." 
+                    : "Dieser Anhänger wurde noch nicht ausgegeben. Die Rückgabe ist gesperrt, bis der Anhänger ausgegeben wurde."}
+                </div>
+                <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-400 font-bold shrink-0 ml-2">
+                  {language === "pl" ? "Wymaga wydania" : "Erfordert Ausgabe"}
+                </Badge>
+              </div>
+            )}
+
             <div className="bg-muted p-4 rounded-md">
               <h4 className="font-semibold">{client.name}</h4>
               <p className="text-sm">Fahrzeug: {trailer?.plate}</p>
@@ -234,7 +259,12 @@ export function ReturnTrailerDialog({ reservation, isOpen, onClose }: ReturnTrai
             </Button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose}>{t.cancel}</Button>
-              <Button onClick={handleSave} className="gap-2">
+              <Button 
+                onClick={handleSave} 
+                disabled={!isReleased} 
+                className="gap-2"
+                title={!isReleased ? (language === "pl" ? "Przyczepa musi zostać najpierw wydana" : "Der Anhänger muss zuerst ausgegeben werden") : undefined}
+              >
                 <Archive className="w-4 h-4" />
                 {t.completeAndArchive}
               </Button>
