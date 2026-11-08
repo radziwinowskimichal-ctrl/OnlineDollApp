@@ -30,6 +30,11 @@ db.exec(`
     id TEXT PRIMARY KEY,
     data TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS backups (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+  );
 `);
 
 // Insert initial data if tables are empty

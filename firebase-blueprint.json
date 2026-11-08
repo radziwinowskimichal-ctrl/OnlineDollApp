@@ -1,0 +1,132 @@
+{
+  "entities": {
+    "Trailer": {
+      "title": "Trailer",
+      "description": "Represents a trailer in the rental fleet",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the trailer" },
+        "plate": { "type": "string", "description": "License plate number" },
+        "type": { "type": "string", "description": "Category or model type of the trailer" },
+        "capacity": { "type": "string", "description": "Load capacity (e.g. 750 kg, 2.7 t)" },
+        "dimensions": { "type": "string", "description": "Cargo bed dimensions" },
+        "status": { "type": "string", "enum": ["available", "service"], "description": "Operating status" },
+        "tuvExpiry": { "type": "string", "description": "TÜV inspection expiration date" },
+        "vin": { "type": "string", "description": "Vehicle identification number" },
+        "model": { "type": "string", "description": "Make or model of the trailer" },
+        "specs": { "type": "string", "description": "Technical specifications" },
+        "notes": { "type": "string", "description": "Internal notes or remarks" }
+      },
+      "required": ["id", "type", "capacity", "dimensions", "status"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Customer entity (private individual or B2B company)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the client" },
+        "name": { "type": "string", "description": "Full name or company name" },
+        "balance": { "type": "number", "description": "Current account balance in EUR" },
+        "notes": { "type": "string", "description": "Internal customer notes" },
+        "type": { "type": "string", "enum": ["private", "company"], "description": "Client classification" },
+        "phone": { "type": "string", "description": "Primary phone number" },
+        "phone2": { "type": "string", "description": "Secondary or alternative phone number" },
+        "email": { "type": "string", "description": "Email address" },
+        "nip": { "type": "string", "description": "Tax ID / NIP for companies" },
+        "contactPerson": { "type": "string", "description": "Representative or fleet manager name" },
+        "address": { "type": "string", "description": "Full formatted address for rental contracts" },
+        "street": { "type": "string", "description": "Street name and building/apartment number" },
+        "postalCode": { "type": "string", "description": "Postal code" },
+        "city": { "type": "string", "description": "City or municipality" },
+        "country": { "type": "string", "description": "Country of residence/incorporation" },
+        "status": { "type": "string", "enum": ["active", "vip", "blocked"], "description": "Client status" },
+        "discountPercent": { "type": "number", "description": "Customer loyalty discount in percent" },
+        "driverLicenseClass": { "type": "string", "description": "Driver license classes (e.g. B, B+E, CE)" },
+        "driverLicenseIssueDate": { "type": "string", "description": "Driver license issue date" },
+        "driverLicenseIssuePlace": { "type": "string", "description": "Driver license issuing authority" },
+        "idCardNumber": { "type": "string", "description": "National ID card or passport number" },
+        "idCardExpiry": { "type": "string", "description": "ID card expiration date" },
+        "idCardIssuePlace": { "type": "string", "description": "ID card issuing authority" },
+        "createdAt": { "type": "string", "description": "Record creation timestamp" }
+      },
+      "required": ["id", "name", "balance", "type"]
+    },
+    "Reservation": {
+      "title": "Reservation",
+      "description": "Trailer rental booking and agreement record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the reservation" },
+        "trailerId": { "type": "string", "description": "ID of the reserved trailer" },
+        "clientId": { "type": "string", "description": "ID of the customer" },
+        "startDate": { "type": "string", "description": "ISO start date and pickup time" },
+        "endDate": { "type": "string", "description": "ISO end date and return time" },
+        "status": { "type": "string", "enum": ["paid", "invoiced", "defect", "completed", "active", "cancelled"], "description": "Reservation status" },
+        "invoiceNumber": { "type": "string", "description": "Invoice or agreement reference number" },
+        "defectNote": { "type": "string", "description": "Maintenance or damage notes" },
+        "agreement": { "type": "object", "description": "Full rental agreement with pricing and deposit details" },
+        "returnProtocol": { "type": "object", "description": "Vehicle return inspection protocol" },
+        "pickupPhotos": { "type": "array", "description": "Base64 or URL photos taken during pickup" },
+        "returnPhotos": { "type": "array", "description": "Base64 or URL photos taken during return" },
+        "history": { "type": "array", "description": "Audit trail log of actions performed on this reservation" }
+      },
+      "required": ["id", "trailerId", "clientId", "startDate", "endDate", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Internal employee/manager operator profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user identifier" },
+        "username": { "type": "string", "description": "Login username" },
+        "displayName": { "type": "string", "description": "Full display name" },
+        "role": { "type": "string", "enum": ["admin", "manager", "employee"], "description": "Access level" },
+        "pin": { "type": "string", "description": "Quick PIN authentication code" },
+        "avatar": { "type": "string", "description": "Avatar image or color code" },
+        "createdAt": { "type": "string", "description": "Profile creation timestamp" }
+      },
+      "required": ["id", "username", "displayName", "role"]
+    },
+    "BackupSnapshot": {
+      "title": "BackupSnapshot",
+      "description": "Database backup snapshot containing reservations, clients, and trailers state",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the backup snapshot" },
+        "name": { "type": "string", "description": "Custom or auto-generated backup title" },
+        "createdAt": { "type": "string", "description": "ISO timestamp when backup was created" },
+        "createdBy": { "type": "string", "description": "Name of operator who created the backup" },
+        "type": { "type": "string", "enum": ["manual", "auto", "imported"], "description": "Backup origin type" },
+        "reservationsCount": { "type": "number", "description": "Number of reservations in snapshot" },
+        "clientsCount": { "type": "number", "description": "Number of clients in snapshot" },
+        "trailersCount": { "type": "number", "description": "Number of trailers in snapshot" },
+        "reservations": { "type": "array", "description": "Serialized or array of reservation records" },
+        "clients": { "type": "array", "description": "Array of client records" },
+        "trailers": { "type": "array", "description": "Array of trailer records" }
+      },
+      "required": ["id", "name", "createdAt", "reservationsCount"]
+    }
+  },
+  "firestore": {
+    "/trailers/{trailerId}": {
+      "schema": "#/entities/Trailer",
+      "description": "Trailer collection for all fleet vehicles"
+    },
+    "/clients/{clientId}": {
+      "schema": "#/entities/Client",
+      "description": "Clients collection for private and business customers"
+    },
+    "/reservations/{reservationId}": {
+      "schema": "#/entities/Reservation",
+      "description": "Reservations collection for bookings, agreements and return protocols"
+    },
+    "/userProfiles/{userProfileId}": {
+      "schema": "#/entities/UserProfile",
+      "description": "Operator and staff profiles"
+    },
+    "/backups/{backupId}": {
+      "schema": "#/entities/BackupSnapshot",
+      "description": "Cloud database snapshots for backup and restoration"
+    }
+  }
+}

@@ -85,11 +85,7 @@ export function ReturnTrailerDialog({ reservation, isOpen, onClose }: ReturnTrai
 
   const handleSave = () => {
     if (!isReleased) {
-      toast.error(
-        language === "pl"
-          ? "Nie można odebrać przyczepy przed jej wydaniem! Najpierw wydaj przyczepę."
-          : "Der Anhänger muss zuerst ausgegeben werden!"
-      );
+      toast.error(t.mustReleaseFirst);
       return;
     }
 
@@ -146,13 +142,15 @@ export function ReturnTrailerDialog({ reservation, isOpen, onClose }: ReturnTrai
             {!isReleased && (
               <div className="bg-amber-50 border border-amber-300 text-amber-900 px-4 py-3 rounded-md flex items-center justify-between text-sm">
                 <div>
-                  <span className="font-bold">{language === "pl" ? "Uwaga: " : "Achtung: "}</span>
+                  <span className="font-bold">{language === "pl" ? "Uwaga: " : language === "de" ? "Achtung: " : "Attention: "}</span>
                   {language === "pl" 
                     ? "Ta przyczepa nie została jeszcze wydana. Zablokowano możliwość odbioru i archiwizacji do momentu wydania." 
-                    : "Dieser Anhänger wurde noch nicht ausgegeben. Die Rückgabe ist gesperrt, bis der Anhänger ausgegeben wurde."}
+                    : language === "de"
+                    ? "Dieser Anhänger wurde noch nicht ausgegeben. Die Rückgabe ist gesperrt, bis der Anhänger ausgegeben wurde."
+                    : "This trailer has not been released yet. Return and archiving is locked until released."}
                 </div>
                 <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-400 font-bold shrink-0 ml-2">
-                  {language === "pl" ? "Wymaga wydania" : "Erfordert Ausgabe"}
+                  {t.requiresRelease}
                 </Badge>
               </div>
             )}
@@ -263,7 +261,7 @@ export function ReturnTrailerDialog({ reservation, isOpen, onClose }: ReturnTrai
                 onClick={handleSave} 
                 disabled={!isReleased} 
                 className="gap-2"
-                title={!isReleased ? (language === "pl" ? "Przyczepa musi zostać najpierw wydana" : "Der Anhänger muss zuerst ausgegeben werden") : undefined}
+                title={!isReleased ? (language === "pl" ? "Przyczepa musi zostać najpierw wydana" : language === "de" ? "Der Anhänger muss zuerst ausgegeben werden" : "The trailer must be released first") : undefined}
               >
                 <Archive className="w-4 h-4" />
                 {t.completeAndArchive}

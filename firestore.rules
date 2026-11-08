@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Trailers collection: full access for rental staff and operators
+    match /trailers/{trailerId} {
+      allow read, write: if true;
+    }
+
+    // Clients collection: management of private and corporate clients
+    match /clients/{clientId} {
+      allow read, write: if true;
+    }
+
+    // Reservations collection: bookings, agreements, and return protocols
+    match /reservations/{reservationId} {
+      allow read, write: if true;
+    }
+
+    // User profiles: staff and operator profiles
+    match /userProfiles/{userProfileId} {
+      allow read, write: if true;
+    }
+
+    // Backups collection: database snapshots and restore points
+    match /backups/{backupId} {
+      allow read, write: if true;
+    }
+  }
+}

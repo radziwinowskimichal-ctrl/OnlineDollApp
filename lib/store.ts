@@ -148,6 +148,20 @@ export interface UserProfile {
   isOnline: boolean;
 }
 
+export interface BackupSnapshot {
+  id: string;
+  name: string;
+  createdAt: string;
+  createdBy: string;
+  type: "manual" | "auto" | "imported";
+  reservationsCount: number;
+  clientsCount: number;
+  trailersCount: number;
+  reservations: Reservation[];
+  clients?: Client[];
+  trailers?: Trailer[];
+}
+
 export const initialProfiles: UserProfile[] = [
   { id: "u1", name: "Erwin", isOnline: false },
   { id: "u2", name: "Steffi", isOnline: false },

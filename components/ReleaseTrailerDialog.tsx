@@ -208,7 +208,13 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
           total: computedTotal
         }
       }));
-      toast.info(language === "pl" ? `Przeliczono kwotę: ${computedTotal} € (${rentalDays} dni)` : `Neu berechnet: ${computedTotal} € (${rentalDays} Tage)`);
+      toast.info(
+        language === "pl" 
+          ? `Przeliczono kwotę: ${computedTotal} € (${rentalDays} ${rentalDays === 1 ? "dzień" : "dni"})` 
+          : language === "de"
+          ? `Neu berechnet: ${computedTotal} € (${rentalDays} ${rentalDays === 1 ? "Tag" : "Tage"})`
+          : `Recalculated amount: ${computedTotal} € (${rentalDays} ${rentalDays === 1 ? "day" : "days"})`
+      );
     }
   };
 
@@ -321,7 +327,13 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
                       },
                       paymentMethod: "BAR"
                     }));
-                    toast.info(language === "pl" ? "Ustawiono klienta prywatnego: automatyczna kaucja 200 € gotówką" : "Privatkunde gewählt: automatische Kaution 200 € in bar");
+                    toast.info(
+                      language === "pl" 
+                        ? "Ustawiono klienta prywatnego: automatyczna kaucja 200 € gotówką" 
+                        : language === "de"
+                        ? "Privatkunde gewählt: automatische Kaution 200 € in bar"
+                        : "Private client selected: automatic deposit 200 € cash"
+                    );
                   }}
                 >
                   {t.privatePerson}
@@ -340,7 +352,13 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
                         general: 1000
                       }
                     }));
-                    toast.info(language === "pl" ? "Ustawiono klienta firmowego: automatyczna kaucja 1000 €" : "Firmenkunde gewählt: automatische Kaution 1000 €");
+                    toast.info(
+                      language === "pl" 
+                        ? "Ustawiono klienta firmowego: automatyczna kaucja 1000 €" 
+                        : language === "de"
+                        ? "Firmenkunde gewählt: automatische Kaution 1000 €"
+                        : "Corporate client selected: automatic deposit 1000 €"
+                    );
                   }}
                 >
                   {t.company}
@@ -457,7 +475,9 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
               <Badge variant="secondary" className="font-mono text-xs font-semibold px-2">
                 {language === "pl" 
                   ? `Czas trwania: ${rentalDays} ${rentalDays === 1 ? "dzień" : "dni"}` 
-                  : `Mietdauer: ${rentalDays} ${rentalDays === 1 ? "Tag" : "Tage"}`}
+                  : language === "de"
+                  ? `Mietdauer: ${rentalDays} ${rentalDays === 1 ? "Tag" : "Tage"}`
+                  : `Duration: ${rentalDays} ${rentalDays === 1 ? "day" : "days"}`}
               </Badge>
             </div>
 
@@ -473,8 +493,8 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
                 />
                 <p className="text-[10px] text-muted-foreground">
                   {agreement.prices?.daily 
-                    ? `${agreement.prices.daily} € × ${rentalDays} ${language === 'pl' ? (rentalDays === 1 ? 'dzień' : 'dni') : 'Tage'} = ${(agreement.prices.daily * rentalDays).toFixed(2)} €` 
-                    : (language === 'pl' ? 'Wpisz stawkę dzienną do automatycznego obliczenia' : 'Tagespreis eingeben zur automatischen Berechnung')}
+                    ? `${agreement.prices.daily} € × ${rentalDays} ${language === 'pl' ? (rentalDays === 1 ? 'dzień' : 'dni') : language === 'de' ? (rentalDays === 1 ? 'Tag' : 'Tage') : (rentalDays === 1 ? 'day' : 'days')} = ${(agreement.prices.daily * rentalDays).toFixed(2)} €` 
+                    : (language === 'pl' ? 'Wpisz stawkę dzienną do automatycznego obliczenia' : language === 'de' ? 'Tagespreis eingeben zur automatischen Berechnung' : 'Enter daily rate for automatic calculation')}
                 </p>
               </div>
 
@@ -510,7 +530,7 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
                       className="text-[10px] text-emerald-700 underline font-semibold hover:text-emerald-900 inline-flex items-center gap-0.5"
                     >
                       <Calculator className="w-2.5 h-2.5" />
-                      {language === 'pl' ? 'Przelicz z dni' : 'Aus Tagen berechnen'}
+                      {language === 'pl' ? 'Przelicz z dni' : language === 'de' ? 'Aus Tagen berechnen' : 'Calculate from days'}
                     </button>
                   ) : null}
                 </div>
@@ -525,7 +545,7 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
                 <p className="text-[10px] text-emerald-700 font-medium">
                   {agreement.prices?.total 
                     ? `${Number(agreement.prices.total).toFixed(2)} € brutto` 
-                    : (language === 'pl' ? 'Obliczana automatycznie lub wpisz ręcznie' : 'Automatisch berechnet oder manuell eingeben')}
+                    : (language === 'pl' ? 'Obliczana automatycznie lub wpisz ręcznie' : language === 'de' ? 'Automatisch berechnet oder manuell eingeben' : 'Calculated automatically or enter manually')}
                 </p>
               </div>
             </div>
@@ -537,10 +557,10 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
                   <div className="space-y-0.5">
                     <span className="font-bold flex items-center gap-1.5">
                       <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                      {language === "pl" ? "Klient prywatny: automatyczna kaucja 200 €" : "Privatkunde: automatische Kaution 200 €"}
+                      {t.privateDepositBanner}
                     </span>
                     <p className="text-[11px] text-amber-700 font-medium">
-                      {language === "pl" ? "Kaucja płatna w gotówce (BAR)" : "Kaution in bar zu hinterlegen (BAR)"}
+                      {language === "pl" ? "Kaucja płatna w gotówce (BAR)" : language === "de" ? "Kaution in bar zu hinterlegen (BAR)" : "Deposit payable in cash (BAR)"}
                     </p>
                   </div>
                   <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 font-bold px-2 py-0.5">
@@ -552,10 +572,10 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
                   <div className="space-y-0.5">
                     <span className="font-bold flex items-center gap-1.5">
                       <span className="inline-block w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-                      {language === "pl" ? "Klient firmowy (B2B): automatyczna kaucja 1000 €" : "Firmenkunde (B2B): automatische Kaution 1000 €"}
+                      {t.b2bDepositBanner}
                     </span>
                     <p className="text-[11px] text-blue-700 font-medium">
-                      {language === "pl" ? "Domyślna kaucja zabezpieczająca dla firm: 1000 €" : "Standardmäßige Kaution für Firmen: 1000 €"}
+                      {language === "pl" ? "Domyślna kaucja zabezpieczająca dla firm: 1000 €" : language === "de" ? "Standardmäßige Kaution für Firmen: 1000 €" : "Standard security deposit for companies: 1000 €"}
                     </p>
                   </div>
                   <Badge variant="outline" className="bg-blue-100 text-blue-900 border-blue-300 font-bold px-2 py-0.5">
@@ -586,9 +606,7 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
                   <div>
                     <Label>{t.otherDeposit} / Kaution</Label>
                     <span className="block text-[10px] text-muted-foreground font-medium">
-                      {isPrivate 
-                        ? (language === 'pl' ? 'Domyślnie 200 € gotówką' : 'Standard 200 € in bar')
-                        : (language === 'pl' ? 'Domyślnie 1000 € dla firm' : 'Standard 1000 € für Firmen')}
+                      {isPrivate ? t.defaultCashDeposit : t.defaultCompanyDeposit}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -645,7 +663,7 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
                 <Label>{t.paymentMethod}</Label>
                 {isPrivate && (
                   <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                    {language === "pl" ? "Klient prywatny: Gotówka (BAR)" : "Privatkunde: Barzahlung (BAR)"}
+                    {language === "pl" ? "Klient prywatny: Gotówka (BAR)" : language === "de" ? "Privatkunde: Barzahlung (BAR)" : "Private client: Cash (BAR)"}
                   </span>
                 )}
               </div>

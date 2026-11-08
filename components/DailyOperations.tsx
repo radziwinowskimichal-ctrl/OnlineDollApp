@@ -29,11 +29,7 @@ export function DailyOperations() {
 
   const handleComplete = (res: Reservation) => {
     if (res.status !== "active") {
-      toast.error(
-        language === "pl"
-          ? "Nie można odebrać przyczepy przed jej wydaniem! Najpierw wydaj przyczepę."
-          : "Der Anhänger muss zuerst ausgegeben werden!"
-      );
+      toast.error(t.mustReleaseFirst);
       return;
     }
     setSelectedReservation(res);
@@ -107,7 +103,7 @@ export function DailyOperations() {
                     </Badge>
                     {!isPickup && !isReleased && (
                       <Badge variant="outline" className="bg-amber-100 text-amber-900 border-amber-300 font-bold">
-                        {language === "pl" ? "Wymaga wydania" : "Erfordert Ausgabe"}
+                        {t.requiresRelease}
                       </Badge>
                     )}
                   </div>
@@ -124,13 +120,13 @@ export function DailyOperations() {
                     <div className="pt-2 border-t border-dashed text-xs space-y-1">
                       {res.agreement.prices?.total ? (
                         <p className="font-bold text-emerald-700">
-                          {language === 'pl' ? 'Kwota wynajmu' : 'Mietpreis'}: {Number(res.agreement.prices.total).toFixed(2)} €
-                          {res.agreement.prices.daily ? ` (${res.agreement.prices.daily} €/${language === 'pl' ? 'dzień' : 'Tag'})` : ''}
+                          {t.rentalCost}: {Number(res.agreement.prices.total).toFixed(2)} €
+                          {res.agreement.prices.daily ? ` (${res.agreement.prices.daily} €/${t.day})` : ''}
                         </p>
                       ) : null}
                       {(res.agreement.deposits?.total || res.agreement.deposits?.general) ? (
                         <p className="text-muted-foreground font-medium">
-                          {language === 'pl' ? 'Kaucja' : 'Kaution'}: {res.agreement.deposits.total || res.agreement.deposits.general} € ({res.agreement.paymentMethod || 'BAR'})
+                          {t.deposit}: {res.agreement.deposits.total || res.agreement.deposits.general} € ({res.agreement.paymentMethod || 'BAR'})
                         </p>
                       ) : null}
                     </div>
@@ -151,14 +147,14 @@ export function DailyOperations() {
                     disabled 
                     variant="outline" 
                     className="opacity-60 cursor-not-allowed gap-2"
-                    title={language === "pl" ? "Przyczepa musi zostać najpierw wydana" : "Der Anhänger muss zuerst ausgegeben werden"}
+                    title={t.mustReleaseFirst}
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     {t.markAsCompleted}
                   </Button>
                   <Button onClick={() => handleRelease(res)} className="gap-2">
                     <FileSignature className="w-4 h-4" />
-                    {language === "pl" ? "Wydaj najpierw" : "Zuerst ausgeben"}
+                    {t.releaseFirstBtn}
                   </Button>
                 </div>
               ) : (

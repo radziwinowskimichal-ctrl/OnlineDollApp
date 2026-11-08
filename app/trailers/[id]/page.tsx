@@ -29,7 +29,9 @@ export default function TrailerDetailsPage() {
   if (!trailer) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-        <h2 className="text-2xl font-bold mb-4">Nie znaleziono przyczepy</h2>
+        <h2 className="text-2xl font-bold mb-4">
+          {language === "pl" ? "Nie znaleziono przyczepy" : language === "de" ? "Anhänger nicht gefunden" : "Trailer not found"}
+        </h2>
         <Button onClick={() => router.back()}>{t.back}</Button>
       </div>
     );
@@ -56,7 +58,13 @@ export default function TrailerDetailsPage() {
                 <Truck className="w-5 h-5 text-primary" />
                 {t.trailerDetails}
               </CardTitle>
-              <CardDescription>Podstawowe informacje o sprzęcie</CardDescription>
+              <CardDescription>
+                {language === "pl" 
+                  ? "Podstawowe informacje o sprzęcie" 
+                  : language === "de" 
+                  ? "Grundlegende Fahrzeuginformationen" 
+                  : "Basic vehicle information"}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -118,11 +126,17 @@ export default function TrailerDetailsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Calendar className="w-4 h-4 text-primary" />
-                  Rezerwacje
+                  {language === "pl" ? "Rezerwacje" : language === "de" ? "Reservierungen" : "Reservations"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">Moduł historii rezerwacji w przygotowaniu.</p>
+                <p className="text-sm text-muted-foreground">
+                  {language === "pl" 
+                    ? "Moduł historii rezerwacji w przygotowaniu." 
+                    : language === "de" 
+                    ? "Reservierungshistorie in Vorbereitung." 
+                    : "Reservation history coming soon."}
+                </p>
               </CardContent>
             </Card>
 
@@ -130,11 +144,17 @@ export default function TrailerDetailsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Wrench className="w-4 h-4 text-primary" />
-                  Historia Serwisowa
+                  {language === "pl" ? "Historia Serwisowa" : language === "de" ? "Servicehistorie" : "Service History"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">Moduł historii napraw w przygotowaniu.</p>
+                <p className="text-sm text-muted-foreground">
+                  {language === "pl" 
+                    ? "Moduł historii napraw w przygotowaniu." 
+                    : language === "de" 
+                    ? "Wartungshistorie in Vorbereitung." 
+                    : "Maintenance history module coming soon."}
+                </p>
               </CardContent>
             </Card>
           </div>

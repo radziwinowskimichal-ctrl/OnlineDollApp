@@ -242,7 +242,13 @@ export function ClientList() {
     }
 
     if (type === "company" && nip && nip.replace(/[^0-9]/g, "").length < 9) {
-      toast.warning(language === "pl" ? "Wpisany NIP wydaje się za krótki" : "Die USt-IdNr. scheint zu kurz zu sein");
+      toast.warning(
+        language === "pl" 
+          ? "Wpisany NIP wydaje się za krótki" 
+          : language === "de"
+          ? "Die USt-IdNr. scheint zu kurz zu sein"
+          : "The VAT ID seems too short"
+      );
     }
 
     // Compose formatted address if street or city provided
@@ -287,13 +293,15 @@ export function ClientList() {
 
     if (editingClient) {
       updateClient(clientData);
-      toast.success(language === "pl" ? "Zaktualizowano dane klienta" : t.clientUpdated);
+      toast.success(t.clientUpdated);
     } else {
       addClient(clientData);
       toast.success(
         language === "pl" 
           ? `Dodano klienta: ${clientData.name} ${type === "company" ? "(kaucja domyślna: 1000 €)" : "(kaucja domyślna: 200 €)"}`
-          : t.clientAdded
+          : language === "de"
+          ? `Kunde hinzugefügt: ${clientData.name} ${type === "company" ? "(Standardkaution: 1.000 €)" : "(Standardkaution: 200 €)"}`
+          : `Client added: ${clientData.name} ${type === "company" ? "(default deposit: 1,000 €)" : "(default deposit: 200 €)"}`
       );
     }
     setIsDialogOpen(false);
@@ -315,7 +323,13 @@ export function ClientList() {
     if (!clientForBalance) return;
     const amt = parseFloat(balanceAdjustmentAmount);
     if (isNaN(amt) || amt <= 0) {
-      toast.error(language === "pl" ? "Wpisz poprawną kwotę" : "Bitte gültigen Betrag eingeben");
+      toast.error(
+        language === "pl" 
+          ? "Wpisz poprawną kwotę" 
+          : language === "de"
+          ? "Bitte gültigen Betrag eingeben"
+          : "Please enter a valid amount"
+      );
       return;
     }
 
@@ -325,7 +339,9 @@ export function ClientList() {
     toast.success(
       language === "pl"
         ? `${balanceAdjustmentType === "add" ? "Zarejestrowano wpłatę" : "Zarejestrowano obciążenie"}: ${amt} €`
-        : `Saldo aktualisiert: ${delta > 0 ? "+" : ""}${delta} €`
+        : language === "de"
+        ? `${balanceAdjustmentType === "add" ? "Einzahlung erfasst" : "Belastung erfasst"}: ${amt} €`
+        : `${balanceAdjustmentType === "add" ? "Payment recorded" : "Charge recorded"}: ${amt} €`
     );
     setIsBalanceDialogOpen(false);
 
@@ -343,11 +359,7 @@ export function ClientList() {
       r => r.clientId === client.id && r.status !== "completed" && r.status !== "cancelled"
     );
     if (hasActiveReservations) {
-      toast.error(
-        language === "pl"
-          ? "Nie można usunąć klienta, który posiada aktywne lub zaplanowane rezerwacje!"
-          : "Kunde kann nicht gelöscht werden, da aktive Reservierungen vorhanden sind!"
-      );
+      toast.error(t.cannotDeleteActiveRentals);
       return;
     }
     setClientToDelete(client);
@@ -357,11 +369,7 @@ export function ClientList() {
   const confirmDelete = () => {
     if (!clientToDelete) return;
     deleteClient(clientToDelete.id);
-    toast.success(
-      language === "pl"
-        ? `Usunięto klienta: ${clientToDelete.name}`
-        : "Kunde erfolgreich gelöscht"
-    );
+    toast.success(`${t.clientDeletedSuccess}: ${clientToDelete.name}`);
     setIsDeleteDialogOpen(false);
     if (isDetailsOpen && selectedClientForDetails?.id === clientToDelete.id) {
       setIsDetailsOpen(false);
@@ -375,60 +383,60 @@ export function ClientList() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
         <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-[11px] font-bold uppercase tracking-wider">{language === "pl" ? "Wszyscy klienci" : "Kunden gesamt"}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">{t.totalClients}</span>
             <UserIcon className="w-4 h-4 text-slate-500" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black tracking-tight text-slate-900">{totalClients}</span>
-            <span className="text-[11px] font-medium text-slate-500">bazie</span>
+            <span className="text-[11px] font-medium text-slate-500">{t.inDatabase}</span>
           </div>
         </div>
 
         <div className="bg-blue-50/60 p-3.5 rounded-xl border border-blue-200 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-blue-900">
-            <span className="text-[11px] font-bold uppercase tracking-wider">{language === "pl" ? "Firmy (B2B)" : "Firmen (B2B)"}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">{t.companiesB2B}</span>
             <Building2 className="w-4 h-4 text-blue-600" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black tracking-tight text-blue-950">{companyClients}</span>
             <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 font-bold text-[10px] px-1.5 py-0">
-              Kaucja 1000 €
+              {t.deposit1000Badge}
             </Badge>
           </div>
         </div>
 
         <div className="bg-amber-50/60 p-3.5 rounded-xl border border-amber-200 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-amber-900">
-            <span className="text-[11px] font-bold uppercase tracking-wider">{language === "pl" ? "Osoby prywatne" : "Privatkunden"}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">{t.privateIndividuals}</span>
             <UserIcon className="w-4 h-4 text-amber-600" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black tracking-tight text-amber-950">{privateClients}</span>
             <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 font-bold text-[10px] px-1.5 py-0">
-              Kaucja 200 €
+              {t.deposit200Badge}
             </Badge>
           </div>
         </div>
 
         <div className="bg-purple-50/60 p-3.5 rounded-xl border border-purple-200 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-purple-900">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Klienci VIP</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">{t.vipClients}</span>
             <Crown className="w-4 h-4 text-purple-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black tracking-tight text-purple-950">{vipClients}</span>
-            <span className="text-[11px] font-medium text-purple-700">ze zniżką</span>
+            <span className="text-[11px] font-medium text-purple-700">{t.withDiscount}</span>
           </div>
         </div>
 
         <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-emerald-900">
-            <span className="text-[11px] font-bold uppercase tracking-wider">{language === "pl" ? "W trasie teraz" : "Aktuell unterwegs"}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">{t.onTheRoad}</span>
             <Truck className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black tracking-tight text-emerald-950">{activeRentalsCount}</span>
-            <span className="text-[11px] font-medium text-emerald-700">{language === "pl" ? "aktywne" : "aktiv"}</span>
+            <span className="text-[11px] font-medium text-emerald-700">{t.activeRentalStatus}</span>
           </div>
         </div>
 
@@ -437,7 +445,7 @@ export function ClientList() {
           debtors.length > 0 ? "bg-rose-50/70 border-rose-200" : "bg-slate-50 border-slate-200"
         )}>
           <div className="flex items-center justify-between text-rose-900">
-            <span className="text-[11px] font-bold uppercase tracking-wider">{language === "pl" ? "Zaległości" : "Rückstände"}</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider">{t.debtOverdue}</span>
             <AlertCircle className={cn("w-4 h-4", debtors.length > 0 ? "text-rose-600" : "text-slate-400")} />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
@@ -446,7 +454,7 @@ export function ClientList() {
             </span>
             {debtors.length > 0 && (
               <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-300 font-bold text-[10px] px-1.5 py-0">
-                {debtors.length} {language === "pl" ? "dłużników" : "Schuldner"}
+                {debtors.length} {t.debtors}
               </Badge>
             )}
           </div>
@@ -460,7 +468,7 @@ export function ClientList() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               type="search"
-              placeholder={language === "pl" ? "Szukaj po nazwisku, firmie, NIP, telefonie, mieście..." : t.searchClients}
+              placeholder={language === "pl" ? "Szukaj po nazwisku, firmie, NIP, telefonie, mieście..." : language === "de" ? "Nach Name, Firma, USt-IdNr, Telefon, Ort suchen..." : "Search by name, company, VAT, phone, city..."}
               className="pl-9 h-10 bg-white border-slate-200 shadow-xs text-sm font-medium focus-visible:ring-primary"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -471,13 +479,13 @@ export function ClientList() {
             <ArrowUpDown className="w-3.5 h-3.5 ml-2 text-slate-400" />
             <Select value={sortBy} onValueChange={(v) => v && setSortBy(v as any)}>
               <SelectTrigger className="h-8 border-none shadow-none text-xs font-semibold focus:ring-0">
-                <SelectValue placeholder="Sortuj" />
+                <SelectValue placeholder={t.sortName} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="name">{language === "pl" ? "Nazwa (A-Z)" : "Name (A-Z)"}</SelectItem>
-                <SelectItem value="balance_desc">{language === "pl" ? "Saldo: najwyższe" : "Saldo: absteigend"}</SelectItem>
-                <SelectItem value="balance_asc">{language === "pl" ? "Saldo: najniższe (długi)" : "Saldo: aufsteigend"}</SelectItem>
-                <SelectItem value="reservations">{language === "pl" ? "Najwięcej rezerwacji" : "Meiste Reservierungen"}</SelectItem>
+                <SelectItem value="name">{t.sortName}</SelectItem>
+                <SelectItem value="balance_desc">{t.sortBalanceDesc}</SelectItem>
+                <SelectItem value="balance_asc">{t.sortBalanceAsc}</SelectItem>
+                <SelectItem value="reservations">{t.sortReservations}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -489,7 +497,7 @@ export function ClientList() {
             className="rounded-lg h-10 font-black uppercase tracking-tight px-5 shadow-sm shrink-0 bg-primary hover:bg-primary/95 text-white"
           >
             <Plus className="mr-1.5 h-4 w-4" />
-            {t.newClient || "Nowy klient"}
+            {t.newClient}
           </Button>
         </div>
       </div>
@@ -503,7 +511,7 @@ export function ClientList() {
           className="h-7 text-xs font-semibold rounded-full px-3"
           onClick={() => setFilterType("all")}
         >
-          {language === "pl" ? "Wszyscy" : "Alle"} ({clients.length})
+          {t.filterAll} ({clients.length})
         </Button>
         <Button
           type="button"
@@ -516,7 +524,7 @@ export function ClientList() {
           onClick={() => setFilterType("company")}
         >
           <Building2 className="w-3.5 h-3.5 mr-1 text-blue-500" />
-          {language === "pl" ? "Firmy B2B (kaucja 1000 €)" : "Firmen B2B (1000 € Kaution)"} ({companyClients})
+          {t.filterCompanies} ({companyClients})
         </Button>
         <Button
           type="button"
@@ -529,7 +537,7 @@ export function ClientList() {
           onClick={() => setFilterType("private")}
         >
           <UserIcon className="w-3.5 h-3.5 mr-1 text-amber-500" />
-          {language === "pl" ? "Osoby prywatne (kaucja 200 €)" : "Privat (200 €)"} ({privateClients})
+          {t.filterPrivate} ({privateClients})
         </Button>
         <Button
           type="button"
@@ -539,7 +547,7 @@ export function ClientList() {
           onClick={() => setFilterType("active")}
         >
           <Truck className="w-3.5 h-3.5 mr-1" />
-          {language === "pl" ? "Aktywne wynajmy" : "Aktive Mieten"}
+          {t.filterActive}
         </Button>
         <Button
           type="button"
@@ -552,7 +560,7 @@ export function ClientList() {
           onClick={() => setFilterType("vip")}
         >
           <Crown className="w-3.5 h-3.5 mr-1 text-amber-400" />
-          VIP ({vipClients})
+          {t.filterVip} ({vipClients})
         </Button>
         <Button
           type="button"
@@ -565,7 +573,7 @@ export function ClientList() {
           onClick={() => setFilterType("debt")}
         >
           <AlertCircle className="w-3.5 h-3.5 mr-1 text-rose-500" />
-          {language === "pl" ? "Zaległości" : "Rückstände"} ({debtors.length})
+          {t.filterDebt} ({debtors.length})
         </Button>
         <Button
           type="button"
@@ -575,7 +583,7 @@ export function ClientList() {
           onClick={() => setFilterType("blocked")}
         >
           <Ban className="w-3.5 h-3.5 mr-1 text-red-500" />
-          {language === "pl" ? "Zablokowani" : "Gesperrt"}
+          {t.filterBlocked}
         </Button>
       </div>
 
@@ -585,11 +593,13 @@ export function ClientList() {
           <TableHeader className="bg-slate-50/75">
             <TableRow className="border-b border-slate-200">
               <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500 pl-4">{t.client}</TableHead>
-              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500">{t.phone} / {t.email} / Adres</TableHead>
-              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500">Uprawnienia & Dokumenty</TableHead>
-              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500">Saldo & Kaucja</TableHead>
-              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500">Historia wynajmów</TableHead>
-              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500 text-center">Status</TableHead>
+              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500">
+                {t.phone} / {t.email} / {language === 'pl' ? 'Adres' : language === 'de' ? 'Adresse' : 'Address'}
+              </TableHead>
+              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500">{t.driverLicenseAndDocs}</TableHead>
+              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500">{t.balanceAndDeposit}</TableHead>
+              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500">{t.rentalHistory}</TableHead>
+              <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500 text-center">{t.status}</TableHead>
               <TableHead className="text-[10px] font-black uppercase tracking-wider h-11 text-slate-500 text-right pr-4">{t.actions}</TableHead>
             </TableRow>
           </TableHeader>
@@ -656,11 +666,11 @@ export function ClientList() {
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
                           <span className="font-semibold text-slate-600">
-                            {client.type === "company" ? (t.company || "Firma B2B") : (t.privatePerson || "Osoba prywatna")}
+                            {client.type === "company" ? t.company : t.privatePerson}
                           </span>
                           {client.nip && (
                             <span className="font-mono text-[10px] bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200 text-slate-700">
-                              NIP: {client.nip}
+                              {t.nip}: {client.nip}
                             </span>
                           )}
                           {client.contactPerson && (
@@ -680,7 +690,6 @@ export function ClientList() {
                         <a 
                           href={`tel:${client.phone}`} 
                           className="font-medium text-slate-800 hover:text-primary flex items-center gap-1 w-fit"
-                          title="Zadzwoń"
                         >
                           <Phone className="w-3 h-3 text-slate-400" />
                           <span>{client.phone}</span>
@@ -714,17 +723,17 @@ export function ClientList() {
                         {hasBE ? (
                           <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-300 font-bold text-[10px] px-1.5 py-0 flex items-center gap-1">
                             <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                            Kat. B+E (Laweta OK)
+                            {t.hasLawetaLicense}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 text-[10px] px-1.5 py-0">
-                            Kat. {client.driverLicenseClass || "B"}
+                            {t.category} {client.driverLicenseClass || "B"}
                           </Badge>
                         )}
                       </div>
                       <div className="text-[10px] text-muted-foreground flex items-center gap-1">
                         <CreditCard className="w-3 h-3 text-slate-400" />
-                        <span>{hasIdCard ? `Dowód: ${client.idCardNumber}` : (language === "pl" ? "Brak dowodu w bazie" : "Kein Ausweis")}</span>
+                        <span>{hasIdCard ? `${client.idCardNumber}` : t.noIdCardInDb}</span>
                       </div>
                     </div>
                   </TableCell>
@@ -744,7 +753,7 @@ export function ClientList() {
                           size="sm"
                           className="h-5 px-1.5 text-[10px] text-slate-500 hover:text-slate-900 border border-slate-200 bg-slate-50"
                           onClick={() => handleOpenBalanceDialog(client)}
-                          title="Zmień saldo / rozlicz"
+                          title={t.adjustBalanceBtn}
                         >
                           +/-
                         </Button>
@@ -752,11 +761,11 @@ export function ClientList() {
                       <div className="flex items-center gap-1">
                         {client.type === "company" ? (
                           <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 text-[9px] font-bold px-1 py-0">
-                            Kaucja B2B: 1000 €
+                            {t.depositB2BRule}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 text-[9px] font-bold px-1 py-0">
-                            Kaucja: 200 € BAR
+                            {t.depositPrivateRule}
                           </Badge>
                         )}
                       </div>
@@ -768,11 +777,11 @@ export function ClientList() {
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold text-slate-800">
-                          {clientReservations.length} {language === "pl" ? "wynajmów" : "Mieten"}
+                          {clientReservations.length} {t.rentalsCount}
                         </span>
                         {hasActiveRental && (
                           <Badge className="bg-emerald-500 text-white text-[9px] font-black px-1.5 py-0 h-4 animate-pulse">
-                            W trasie
+                            {t.currentlyRenting}
                           </Badge>
                         )}
                       </div>
@@ -780,7 +789,7 @@ export function ClientList() {
                         <div className="flex flex-wrap gap-1">
                           {clientReservations.slice(-2).map(res => (
                             <span key={res.id} className="text-[9px] font-mono bg-slate-100 text-slate-600 px-1 py-0.2 rounded border border-slate-200">
-                              {res.invoiceNumber || "Wypożyczenie"}
+                              {res.invoiceNumber || t.rentalWord}
                             </span>
                           ))}
                         </div>
@@ -801,12 +810,12 @@ export function ClientList() {
                         : "bg-slate-100 text-slate-600"
                     )}>
                       {client.status === "blocked"
-                        ? (language === "pl" ? "Zablokowany" : "Gesperrt")
+                        ? t.statusBlocked
                         : client.status === "vip"
-                        ? "Klient VIP"
+                        ? t.statusVip
                         : hasActiveRental
-                        ? (language === "pl" ? "Wypożycza" : "Aktiv")
-                        : (language === "pl" ? "Aktywny" : "Aktiv")}
+                        ? t.currentlyRenting
+                        : t.statusActive}
                     </Badge>
                   </TableCell>
 
@@ -818,7 +827,7 @@ export function ClientList() {
                         size="icon" 
                         className="h-8 w-8 rounded-lg hover:bg-slate-200/60"
                         onClick={() => handleOpenDetails(client)}
-                        title="Podgląd dossier"
+                        title={t.dossierTitle}
                       >
                         <Eye className="h-4 w-4 text-slate-600" />
                       </Button>
@@ -827,7 +836,7 @@ export function ClientList() {
                         size="icon" 
                         className="h-8 w-8 rounded-lg hover:bg-slate-200/60" 
                         onClick={() => handleOpenDialog(client)}
-                        title="Edytuj klienta"
+                        title={t.editClient}
                       >
                         <Edit className="h-4 w-4 text-slate-600" />
                       </Button>
@@ -836,7 +845,7 @@ export function ClientList() {
                         size="icon" 
                         className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50" 
                         onClick={() => handleRequestDelete(client)}
-                        title="Usuń klienta"
+                        title={t.deleteClientBtn}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -850,7 +859,7 @@ export function ClientList() {
                 <TableCell colSpan={7} className="h-32 text-center text-slate-400 font-bold uppercase tracking-wider text-xs">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <UserIcon className="w-8 h-8 text-slate-300 stroke-1" />
-                    <span>{t.clientNotFound || "Nie znaleziono klientów"}</span>
+                    <span>{t.clientNotFound}</span>
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -858,7 +867,7 @@ export function ClientList() {
                       className="mt-2 text-xs font-semibold"
                     >
                       <Plus className="w-3.5 h-3.5 mr-1" />
-                      Dodaj pierwszego klienta
+                      {t.addFirstClient}
                     </Button>
                   </div>
                 </TableCell>
@@ -873,14 +882,14 @@ export function ClientList() {
         <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center justify-between">
-              <span>{editingClient ? (language === "pl" ? "Edycja danych klienta" : t.editClient) : (language === "pl" ? "Nowy klient w bazie" : t.newClient)}</span>
+              <span>{editingClient ? t.editClient : t.newClient}</span>
               {type === "company" ? (
                 <Badge className="bg-blue-100 text-blue-900 border-blue-300 font-bold">
-                  B2B • Automatyczna kaucja 1000 €
+                  {t.autoDeposit1000Notice}
                 </Badge>
               ) : (
                 <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-bold">
-                  Prywatny • Kaucja 200 € BAR
+                  {t.autoDeposit200Notice}
                 </Badge>
               )}
             </DialogTitle>
@@ -898,7 +907,7 @@ export function ClientList() {
               )}
               onClick={() => setActiveFormTab("basic")}
             >
-              1. Podstawowe & Kontakt
+              {t.tabBasicContact}
             </button>
             <button
               type="button"
@@ -910,7 +919,7 @@ export function ClientList() {
               )}
               onClick={() => setActiveFormTab("address")}
             >
-              2. Adres rejestracyjny
+              {t.tabAddress}
             </button>
             <button
               type="button"
@@ -922,7 +931,7 @@ export function ClientList() {
               )}
               onClick={() => setActiveFormTab("documents")}
             >
-              3. Prawo jazdy & Dowód
+              {t.tabLicenseDocs}
             </button>
             <button
               type="button"
@@ -934,7 +943,7 @@ export function ClientList() {
               )}
               onClick={() => setActiveFormTab("finances")}
             >
-              4. Finanse & Notatki
+              {t.tabFinancesNotes}
             </button>
           </div>
 
@@ -950,22 +959,22 @@ export function ClientList() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="private">{t.privatePerson || "Osoba prywatna (kaucja 200 €)"}</SelectItem>
-                        <SelectItem value="company">{t.company || "Firma B2B (kaucja 1000 €)"}</SelectItem>
+                        <SelectItem value="private">{t.privatePerson} ({t.deposit200Badge})</SelectItem>
+                        <SelectItem value="company">{t.company} ({t.deposit1000Badge})</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Status klienta</Label>
+                    <Label className="text-xs font-semibold">{t.clientStatus}</Label>
                     <Select value={status} onValueChange={(v) => v && setStatus(v as any)}>
                       <SelectTrigger className="font-semibold">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="active">Aktywny (Standard)</SelectItem>
-                        <SelectItem value="vip">Klient VIP (Stały klient)</SelectItem>
-                        <SelectItem value="blocked">Zablokowany (Blokada wynajmu)</SelectItem>
+                        <SelectItem value="active">{t.statusActive}</SelectItem>
+                        <SelectItem value="vip">{t.statusVip}</SelectItem>
+                        <SelectItem value="blocked">{t.statusBlocked}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -973,13 +982,13 @@ export function ClientList() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="clientName" className="text-xs font-semibold">
-                    {type === "company" ? (t.companyName || "Pełna nazwa firmy") : (t.fullName || "Imię i nazwisko")} *
+                    {type === "company" ? t.companyName : t.fullName} *
                   </Label>
                   <Input 
                     id="clientName" 
                     value={name} 
                     onChange={(e) => setName(e.target.value)} 
-                    placeholder={type === "company" ? "np. Trans-Pol Sp. z o.o." : "np. Jan Kowalski"}
+                    placeholder={type === "company" ? (language === "pl" ? "np. Trans-Pol Sp. z o.o." : language === "de" ? "z.B. Schmidt Logistik GmbH" : "e.g. Acme Transport LLC") : (language === "pl" ? "np. Jan Kowalski" : language === "de" ? "z.B. Max Mustermann" : "e.g. John Doe")}
                     className="font-medium"
                   />
                 </div>
@@ -988,52 +997,52 @@ export function ClientList() {
                   <div className="grid grid-cols-2 gap-4 bg-blue-50/60 p-3 rounded-lg border border-blue-200">
                     <div className="space-y-1.5">
                       <Label htmlFor="nip" className="text-xs font-semibold text-blue-950">
-                        {t.nip || "NIP / USt-IdNr."}
+                        {t.nip}
                       </Label>
                       <Input 
                         id="nip" 
                         value={nip} 
                         onChange={(e) => setNip(e.target.value)} 
-                        placeholder="np. PL1234567890 lub DE123456789" 
+                        placeholder="DE123456789 / PL1234567890" 
                         className="bg-white font-mono"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="contactPerson" className="text-xs font-semibold text-blue-950">
-                        Osoba do kontaktu / Przedstawiciel
+                        {t.contactPersonLabel}
                       </Label>
                       <Input 
                         id="contactPerson" 
                         value={contactPerson} 
                         onChange={(e) => setContactPerson(e.target.value)} 
-                        placeholder="np. Marek Nowak (Kierownik floty)" 
+                        placeholder={language === "pl" ? "np. Marek Nowak" : language === "de" ? "z.B. Thomas Müller" : "e.g. Jane Smith"} 
                         className="bg-white"
                       />
                     </div>
                     <div className="col-span-2 text-[11px] text-blue-800 font-medium flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-blue-600" />
-                      <span>Dla rezerwacji firmowych automatyczna kaucja wynosi <strong>1000 €</strong>.</span>
+                      <span>{t.depositPolicyCompany}</span>
                     </div>
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="phone" className="text-xs font-semibold">{t.phone} (Główny)</Label>
+                    <Label htmlFor="phone" className="text-xs font-semibold">{t.phone}</Label>
                     <Input 
                       id="phone" 
                       value={phone} 
                       onChange={(e) => setPhone(e.target.value)} 
-                      placeholder="+49 ... lub +48 ..." 
+                      placeholder="+49 ... / +48 ..." 
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="phone2" className="text-xs font-semibold">Telefon dodatkowy</Label>
+                    <Label htmlFor="phone2" className="text-xs font-semibold">{t.phone2Label}</Label>
                     <Input 
                       id="phone2" 
                       value={phone2} 
                       onChange={(e) => setPhone2(e.target.value)} 
-                      placeholder="Kierowca / Biuro" 
+                      placeholder="+49 ... / +48 ..." 
                     />
                   </div>
                 </div>
@@ -1046,11 +1055,11 @@ export function ClientList() {
                       type="email" 
                       value={email} 
                       onChange={(e) => setEmail(e.target.value)} 
-                      placeholder="biuro@firma.pl" 
+                      placeholder="info@firma.de" 
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="discount" className="text-xs font-semibold">Rabat stałego klienta (%)</Label>
+                    <Label htmlFor="discount" className="text-xs font-semibold">{t.discountLabel}</Label>
                     <div className="flex items-center gap-2">
                       <Input 
                         id="discount" 
@@ -1073,59 +1082,59 @@ export function ClientList() {
             {activeFormTab === "address" && (
               <div className="space-y-4">
                 <div className="p-3 bg-slate-50 rounded-lg border text-xs text-muted-foreground">
-                  Adres klienta drukowany jest bezpośrednio na umowie wynajmu (Mietvertrag) oraz na protokole zdawczo-odbiorczym.
+                  {t.fullAddressNotice}
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="street" className="text-xs font-semibold">Ulica i numer lokalu</Label>
+                  <Label htmlFor="street" className="text-xs font-semibold">{t.streetLabel}</Label>
                   <Input 
                     id="street" 
                     value={street} 
                     onChange={(e) => setStreet(e.target.value)} 
-                    placeholder="np. Hauptstraße 45 lub ul. Główna 12/4" 
+                    placeholder={language === "pl" ? "np. Główna 12" : language === "de" ? "z.B. Hauptstraße 45" : "e.g. 123 Main St"} 
                   />
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="postalCode" className="text-xs font-semibold">Kod pocztowy</Label>
+                    <Label htmlFor="postalCode" className="text-xs font-semibold">{t.postalCodeLabel}</Label>
                     <Input 
                       id="postalCode" 
                       value={postalCode} 
                       onChange={(e) => setPostalCode(e.target.value)} 
-                      placeholder="np. 10115 lub 00-001" 
+                      placeholder="10115" 
                     />
                   </div>
                   <div className="space-y-1.5 col-span-2">
-                    <Label htmlFor="city" className="text-xs font-semibold">Miejscowość</Label>
+                    <Label htmlFor="city" className="text-xs font-semibold">{t.cityLabel}</Label>
                     <Input 
                       id="city" 
                       value={city} 
                       onChange={(e) => setCity(e.target.value)} 
-                      placeholder="np. Berlin lub Poznań" 
+                      placeholder="Berlin" 
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="country" className="text-xs font-semibold">Kraj</Label>
+                  <Label htmlFor="country" className="text-xs font-semibold">{t.countryLabel}</Label>
                   <Input 
                     id="country" 
                     value={country} 
                     onChange={(e) => setCountry(e.target.value)} 
-                    placeholder="Polska / Deutschland" 
+                    placeholder="Deutschland / Polska" 
                   />
                 </div>
 
                 <div className="space-y-1.5 pt-2 border-t">
                   <Label htmlFor="manualAddress" className="text-xs font-semibold text-slate-600">
-                    Lub pełny ciągły adres (jeśli preferujesz ręczny zapis)
+                    {t.manualAddressLabel}
                   </Label>
                   <Input 
                     id="manualAddress" 
                     value={manualAddress} 
                     onChange={(e) => setManualAddress(e.target.value)} 
-                    placeholder="np. ul. Marszałkowska 10, 00-001 Warszawa, Polska" 
+                    placeholder="Hauptstr. 45, 10115 Berlin, Deutschland" 
                   />
                 </div>
               </div>
@@ -1137,19 +1146,19 @@ export function ClientList() {
                 <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
                   <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <strong>Wymogi prawne dla lawet i ciężkich przyczep:</strong>
+                    <strong>{t.driverLicenseHeading}:</strong>
                     <p className="mt-0.5 text-amber-800">
-                      Wydanie autolawety lub przyczepy o DMC powyżej 750 kg wymaga uprawnień <strong>B+E</strong> lub <strong>C+E</strong>. Zapisanie tych danych tutaj ułatwia automatyczną weryfikację podczas wydawania.
+                      {t.lawetaWarningNotice}
                     </p>
                   </div>
                 </div>
 
                 {/* Driver License */}
                 <div className="space-y-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Prawo jazdy (Führerschein)</h4>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">{t.driverLicenseHeading}</h4>
                   
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Kategorie prawa jazdy</Label>
+                    <Label className="text-xs font-semibold">{t.driverLicenseCategories}</Label>
                     <div className="flex gap-1.5 flex-wrap">
                       {["B", "B+E", "BE", "C", "C+E", "T"].map((cat) => (
                         <Button
@@ -1173,14 +1182,14 @@ export function ClientList() {
                     <Input 
                       value={driverLicenseClass} 
                       onChange={(e) => setDriverLicenseClass(e.target.value)} 
-                      placeholder="np. B, B+E, C"
+                      placeholder="B, B+E"
                       className="mt-1" 
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Data wydania prawa jazdy</Label>
+                      <Label className="text-xs font-semibold">{t.driverLicenseIssueDate}</Label>
                       <Input 
                         type="date" 
                         value={driverLicenseIssueDate} 
@@ -1188,11 +1197,11 @@ export function ClientList() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Organ / Miasto wydania</Label>
+                      <Label className="text-xs font-semibold">{t.driverLicenseIssuePlace}</Label>
                       <Input 
                         value={driverLicenseIssuePlace} 
                         onChange={(e) => setDriverLicenseIssuePlace(e.target.value)} 
-                        placeholder="np. Starosta Poznański" 
+                        placeholder={language === "pl" ? "np. Starosta Poznański" : language === "de" ? "z.B. Stadt Berlin" : "e.g. City Council"} 
                       />
                     </div>
                   </div>
@@ -1200,19 +1209,19 @@ export function ClientList() {
 
                 {/* ID Card */}
                 <div className="space-y-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Dowód tożsamości / Paszport (Ausweis / Pass)</h4>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">{t.idCardHeading}</h4>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1.5 col-span-1">
-                      <Label className="text-xs font-semibold">Seria i numer dowodu</Label>
+                      <Label className="text-xs font-semibold">{t.idCardNumberLabel}</Label>
                       <Input 
                         value={idCardNumber} 
                         onChange={(e) => setIdCardNumber(e.target.value)} 
-                        placeholder="np. ABA 123456" 
+                        placeholder="T12345678" 
                         className="font-mono"
                       />
                     </div>
                     <div className="space-y-1.5 col-span-1">
-                      <Label className="text-xs font-semibold">Ważny do</Label>
+                      <Label className="text-xs font-semibold">{t.validUntilLabel}</Label>
                       <Input 
                         type="date" 
                         value={idCardExpiry} 
@@ -1220,11 +1229,11 @@ export function ClientList() {
                       />
                     </div>
                     <div className="space-y-1.5 col-span-1">
-                      <Label className="text-xs font-semibold">Wydany przez</Label>
+                      <Label className="text-xs font-semibold">{t.issuePlaceLabel}</Label>
                       <Input 
                         value={idCardIssuePlace} 
                         onChange={(e) => setIdCardIssuePlace(e.target.value)} 
-                        placeholder="np. Prezydent Miasta" 
+                        placeholder={language === "pl" ? "np. Prezydent Miasta" : language === "de" ? "z.B. Bürgeramt" : "e.g. Passport Office"} 
                       />
                     </div>
                   </div>
@@ -1238,17 +1247,17 @@ export function ClientList() {
                 <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg text-xs text-blue-900 space-y-1">
                   <div className="font-bold flex items-center gap-1.5">
                     <DollarSign className="w-4 h-4 text-blue-600" />
-                    Zasada kaucji w programie:
+                    {t.depositPolicyHeading}
                   </div>
                   <p>
-                    • Dla firm (B2B): automatyczna kaucja <strong>1000 €</strong> przy każdej rezerwacji i wydaniu.<br />
-                    • Dla osób prywatnych: automatyczna kaucja <strong>200 €</strong> w gotówce (BAR).
+                    • {t.depositPolicyCompany}<br />
+                    • {t.depositPolicyPrivate}
                   </p>
                 </div>
 
                 {!editingClient && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="initialBalance" className="text-xs font-semibold">Początkowe saldo konta klienta (€)</Label>
+                    <Label htmlFor="initialBalance" className="text-xs font-semibold">{t.initialBalanceLabel}</Label>
                     <Input 
                       id="initialBalance" 
                       type="number" 
@@ -1259,18 +1268,18 @@ export function ClientList() {
                       className="font-bold w-40"
                     />
                     <span className="text-[10px] text-muted-foreground block">
-                      Wartość ujemna oznacza zaległość, wartość dodatnia to przedpłata/nadpłata.
+                      {t.initialBalanceNotice}
                     </span>
                   </div>
                 )}
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="notes" className="text-xs font-semibold">{t.notes} wewnętrzne</Label>
+                  <Label htmlFor="notes" className="text-xs font-semibold">{t.notes}</Label>
                   <Textarea 
                     id="notes" 
                     value={notes} 
                     onChange={(e) => setNotes(e.target.value)} 
-                    placeholder="Wpisz uwagi o kliencie, preferowane przyczepy, ustalone warunki płatności..."
+                    placeholder={t.internalNotesNotice}
                     className="resize-none h-28"
                   />
                 </div>
@@ -1291,7 +1300,7 @@ export function ClientList() {
                     else if (activeFormTab === "address") setActiveFormTab("basic");
                   }}
                 >
-                  Poprzednia zakładka
+                  {t.previousTab}
                 </Button>
               )}
             </div>
@@ -1337,14 +1346,14 @@ export function ClientList() {
                           )}
                           {client.status === "blocked" && (
                             <Badge className="bg-rose-100 text-rose-800 border-rose-300 font-bold text-[10px] px-1.5 py-0">
-                              Zablokowany
+                              {t.statusBlocked}
                             </Badge>
                           )}
                         </DialogTitle>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {client.type === "company" ? "Klient firmowy (B2B)" : "Klient indywidualny"} 
-                          {client.nip && ` • NIP: ${client.nip}`}
-                          {client.contactPerson && ` • Kontakt: ${client.contactPerson}`}
+                          {client.type === "company" ? t.company : t.privatePerson} 
+                          {client.nip && ` • ${t.nip}: ${client.nip}`}
+                          {client.contactPerson && ` • ${t.contactSection}: ${client.contactPerson}`}
                         </p>
                       </div>
                     </div>
@@ -1355,17 +1364,17 @@ export function ClientList() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {/* Contact Card */}
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
-                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Kontakt</h4>
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t.contactSection}</h4>
                     <div className="space-y-1 text-xs">
                       {client.phone ? (
                         <a href={`tel:${client.phone}`} className="flex items-center gap-1.5 font-bold text-slate-800 hover:text-primary">
                           <Phone className="w-3.5 h-3.5 text-slate-400" />
                           <span>{client.phone}</span>
                         </a>
-                      ) : <span className="text-slate-400">Brak telefonu</span>}
+                      ) : <span className="text-slate-400">{t.noPhone}</span>}
                       {client.phone2 && (
                         <div className="text-[11px] text-slate-500 ml-5">
-                          Dodatkowy: {client.phone2}
+                          {t.additionalPhone} {client.phone2}
                         </div>
                       )}
                       {client.email && (
@@ -1385,13 +1394,13 @@ export function ClientList() {
 
                   {/* Documents & Uprawnienia Card */}
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
-                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Uprawnienia kierowcy</h4>
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t.driverQualifications}</h4>
                     <div className="space-y-1 text-xs">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-slate-600">Prawo jazdy:</span>
+                        <span className="font-semibold text-slate-600">{t.drivingLicense}:</span>
                         {hasBE ? (
                           <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold text-[10px] px-1.5 py-0">
-                            B+E ✓ Laweta OK
+                            {t.hasLawetaLicense}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-[10px] font-bold">
@@ -1401,18 +1410,18 @@ export function ClientList() {
                       </div>
                       {client.driverLicenseIssueDate && (
                         <div className="text-[11px] text-slate-500">
-                          Wydane: {client.driverLicenseIssueDate} {client.driverLicenseIssuePlace && `(${client.driverLicenseIssuePlace})`}
+                          {t.driverLicenseIssueDate}: {client.driverLicenseIssueDate} {client.driverLicenseIssuePlace && `(${client.driverLicenseIssuePlace})`}
                         </div>
                       )}
                       <div className="pt-1 border-t text-[11px] text-slate-700">
-                        <span className="font-semibold">Dowód osobisty:</span>{" "}
+                        <span className="font-semibold">{t.idCardHeading}:</span>{" "}
                         {client.idCardNumber ? (
                           <span className="font-mono">{client.idCardNumber}</span>
                         ) : (
-                          <span className="text-slate-400 italic">brak w bazie</span>
+                          <span className="text-slate-400 italic">{t.noIdCardInDb}</span>
                         )}
                         {client.idCardExpiry && (
-                          <span className="text-slate-400 block text-[10px]">Ważny do: {client.idCardExpiry}</span>
+                          <span className="text-slate-400 block text-[10px]">{t.validUntilLabel}: {client.idCardExpiry}</span>
                         )}
                       </div>
                     </div>
@@ -1421,9 +1430,9 @@ export function ClientList() {
                   {/* Financials & Deposit Rule Card */}
                   <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5 flex flex-col justify-between">
                     <div>
-                      <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Finanse & Kaucja</h4>
+                      <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{t.financesAndDeposit}</h4>
                       <div className="mt-1 flex items-baseline justify-between">
-                        <span className="text-xs text-slate-600">Saldo:</span>
+                        <span className="text-xs text-slate-600">{t.balance}:</span>
                         <span className={cn(
                           "text-lg font-black font-mono",
                           client.balance < 0 ? "text-rose-600" : (client.balance > 0 ? "text-emerald-600" : "text-slate-900")
@@ -1434,11 +1443,11 @@ export function ClientList() {
                       <div className="mt-1 text-[11px] font-medium text-slate-600">
                         {client.type === "company" ? (
                           <Badge className="bg-blue-100 text-blue-900 border-blue-200 text-[10px] font-bold">
-                            Kaucja firmowa: 1000 €
+                            {t.depositB2BRule}
                           </Badge>
                         ) : (
                           <Badge className="bg-amber-100 text-amber-900 border-amber-200 text-[10px] font-bold">
-                            Kaucja gotówkowa: 200 €
+                            {t.depositPrivateRule}
                           </Badge>
                         )}
                       </div>
@@ -1450,7 +1459,7 @@ export function ClientList() {
                       onClick={() => handleOpenBalanceDialog(client)}
                     >
                       <DollarSign className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                      Zmień saldo / rozlicz
+                      {t.adjustBalanceBtn}
                     </Button>
                   </div>
                 </div>
@@ -1458,7 +1467,7 @@ export function ClientList() {
                 {/* Notes */}
                 {client.notes && (
                   <div className="bg-amber-50/50 p-3 rounded-lg border border-amber-200/70 text-xs">
-                    <span className="font-bold text-amber-950 block mb-0.5">Notatka wewnętrzna:</span>
+                    <span className="font-bold text-amber-950 block mb-0.5">{t.internalNoteTitle}</span>
                     <p className="text-slate-700 leading-relaxed"><DynamicText text={client.notes} /></p>
                   </div>
                 )}
@@ -1468,11 +1477,11 @@ export function ClientList() {
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
                       <Calendar className="w-4 h-4 text-slate-500" />
-                      Historia rezerwacji i wynajmów ({clientRes.length})
+                      {t.rentalHistoryTitle} ({clientRes.length})
                     </h3>
                     {activeRes.length > 0 && (
                       <Badge className="bg-emerald-500 text-white font-bold text-[10px]">
-                        {activeRes.length} w trakcie wynajmu
+                        {activeRes.length} {t.currentlyRenting}
                       </Badge>
                     )}
                   </div>
@@ -1480,16 +1489,16 @@ export function ClientList() {
                   <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg">
                     {clientRes.length === 0 ? (
                       <div className="p-4 text-center text-xs text-slate-400 font-medium">
-                        Ten klient nie ma jeszcze żadnych rezerwacji.
+                        {t.noReservationsYet}
                       </div>
                     ) : (
                       <Table>
                         <TableHeader className="bg-slate-50">
                           <TableRow className="border-b">
-                            <TableHead className="text-[10px] h-8">Przyczepa</TableHead>
-                            <TableHead className="text-[10px] h-8">Termin</TableHead>
-                            <TableHead className="text-[10px] h-8">Faktura</TableHead>
-                            <TableHead className="text-[10px] h-8 text-center">Status</TableHead>
+                            <TableHead className="text-[10px] h-8">{t.trailer}</TableHead>
+                            <TableHead className="text-[10px] h-8">{t.startDate} / {t.endDate}</TableHead>
+                            <TableHead className="text-[10px] h-8">{t.invoiceNumber}</TableHead>
+                            <TableHead className="text-[10px] h-8 text-center">{t.status}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1498,7 +1507,7 @@ export function ClientList() {
                             return (
                               <TableRow key={r.id} className="text-xs border-b">
                                 <TableCell className="py-2 font-medium">
-                                  {tr?.plate || "Przyczepa"} <span className="text-[10px] text-muted-foreground">({tr?.type})</span>
+                                  {tr?.plate || t.trailer} <span className="text-[10px] text-muted-foreground">({tr?.type})</span>
                                 </TableCell>
                                 <TableCell className="py-2 text-[11px]">
                                   {format(parseISO(r.startDate), "dd.MM.yyyy")} — {format(parseISO(r.endDate), "dd.MM.yyyy")}
@@ -1528,7 +1537,7 @@ export function ClientList() {
                     onClick={() => handleRequestDelete(client)}
                   >
                     <Trash2 className="w-3.5 h-3.5 mr-1" />
-                    Usuń klienta
+                    {t.deleteClientBtn}
                   </Button>
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>{t.close}</Button>
@@ -1540,7 +1549,7 @@ export function ClientList() {
                       className="bg-primary hover:bg-primary/95 text-white font-bold"
                     >
                       <Edit className="w-3.5 h-3.5 mr-1.5" />
-                      Edytuj dane klienta
+                      {t.editClientBtn}
                     </Button>
                   </div>
                 </DialogFooter>
@@ -1554,14 +1563,14 @@ export function ClientList() {
       <Dialog open={isBalanceDialogOpen} onOpenChange={setIsBalanceDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Rozliczenie klienta / Zmiana salda</DialogTitle>
+            <DialogTitle>{t.balanceAdjustmentTitle}</DialogTitle>
           </DialogHeader>
           {clientForBalance && (
             <div className="space-y-4 py-2">
               <div className="p-3 bg-slate-50 rounded-lg border text-xs">
                 <span className="font-bold text-slate-800">{clientForBalance.name}</span>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-slate-500">Aktualne saldo:</span>
+                  <span className="text-slate-500">{t.currentBalanceLabel}</span>
                   <span className={cn(
                     "font-bold font-mono text-sm",
                     clientForBalance.balance < 0 ? "text-rose-600" : "text-emerald-600"
@@ -1581,7 +1590,7 @@ export function ClientList() {
                   )}
                   onClick={() => setBalanceAdjustmentType("add")}
                 >
-                  + Wpłata klienta
+                  {t.paymentInBtn}
                 </Button>
                 <Button
                   type="button"
@@ -1592,19 +1601,19 @@ export function ClientList() {
                   )}
                   onClick={() => setBalanceAdjustmentType("subtract")}
                 >
-                  - Obciążenie klienta
+                  {t.chargeOutBtn}
                 </Button>
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="adjAmount" className="text-xs font-semibold">
-                  Kwota operacji (€)
+                  {t.operationAmountLabel}
                 </Label>
                 <Input 
                   id="adjAmount"
                   type="number"
                   step="any"
-                  placeholder="np. 50.00"
+                  placeholder="50.00"
                   value={balanceAdjustmentAmount}
                   onChange={(e) => setBalanceAdjustmentAmount(e.target.value)}
                   className="text-lg font-bold"
@@ -1631,7 +1640,7 @@ export function ClientList() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsBalanceDialogOpen(false)}>{t.cancel}</Button>
             <Button onClick={handleSaveBalanceAdjustment} className="font-bold">
-              Zatwierdź rozliczenie
+              {t.confirmAdjustmentBtn}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1643,22 +1652,22 @@ export function ClientList() {
           <DialogHeader>
             <DialogTitle className="text-rose-600 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-rose-600" />
-              Usuń klienta z bazy
+              {t.deleteClientTitle}
             </DialogTitle>
           </DialogHeader>
           <div className="py-2 text-sm text-slate-600">
-            Czy na pewno chcesz bezpowrotnie usunąć klienta{" "}
+            {t.deleteClientConfirmText}{" "}
             <strong className="text-slate-900">{clientToDelete?.name}</strong>?
             {clientToDelete && clientToDelete.balance !== 0 && (
               <p className="mt-2 text-xs font-semibold text-rose-600 bg-rose-50 p-2 rounded border border-rose-200">
-                Uwaga: Klient posiada nierozliczone saldo w wysokości {clientToDelete.balance} €!
+                {t.deleteClientDebtWarning} {clientToDelete.balance} €!
               </p>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>{t.cancel}</Button>
             <Button variant="destructive" onClick={confirmDelete} className="font-bold">
-              Potwierdź usunięcie
+              {t.confirmDeleteBtn}
             </Button>
           </DialogFooter>
         </DialogContent>

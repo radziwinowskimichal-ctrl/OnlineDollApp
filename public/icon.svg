@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Background rounded rect -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  
+  <!-- Trailer Body -->
+  <g filter="url(#shadow)" transform="translate(64, 110)">
+    <!-- Trailer Box Container -->
+    <rect x="20" y="40" width="260" height="170" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="6"/>
+    <!-- Stripes / Ribs -->
+    <line x1="85" y1="40" x2="85" y2="210" stroke="#cbd5e1" stroke-width="4"/>
+    <line x1="150" y1="40" x2="150" y2="210" stroke="#cbd5e1" stroke-width="4"/>
+    <line x1="215" y1="40" x2="215" y2="210" stroke="#cbd5e1" stroke-width="4"/>
+    
+    <!-- Accent Branding stripe -->
+    <rect x="20" y="110" width="260" height="30" fill="url(#accent)"/>
+    
+    <!-- Tow hitch / A-frame -->
+    <polygon points="280,180 360,200 360,210 280,210" fill="#94a3b8"/>
+    <circle cx="365" cy="205" r="10" fill="#64748b"/>
+    
+    <!-- Wheels -->
+    <g transform="translate(100, 210)">
+      <circle cx="0" cy="15" r="32" fill="#0f172a"/>
+      <circle cx="0" cy="15" r="16" fill="#cbd5e1"/>
+      <circle cx="0" cy="15" r="6" fill="#0f172a"/>
+    </g>
+    <g transform="translate(180, 210)">
+      <circle cx="0" cy="15" r="32" fill="#0f172a"/>
+      <circle cx="0" cy="15" r="16" fill="#cbd5e1"/>
+      <circle cx="0" cy="15" r="6" fill="#0f172a"/>
+    </g>
+
+    <!-- Calendar badge in top right inside trailer -->
+    <rect x="180" y="55" width="80" height="42" rx="8" fill="#1e293b"/>
+    <rect x="180" y="55" width="80" height="14" rx="4" fill="#ef4444"/>
+    <circle cx="195" cy="62" r="3" fill="#ffffff"/>
+    <circle cx="245" cy="62" r="3" fill="#ffffff"/>
+    <text x="220" y="90" font-family="system-ui, sans-serif" font-weight="900" font-size="20" fill="#ffffff" text-anchor="middle">24/7</text>
+  </g>
+</svg>

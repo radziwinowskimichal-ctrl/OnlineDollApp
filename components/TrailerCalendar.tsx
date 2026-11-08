@@ -9,7 +9,7 @@ import { pl, enUS, de } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus, Check, ChevronsUpDown, Search, CheckCircle2, FileSignature } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Check, ChevronsUpDown, Search, CheckCircle2, FileSignature, Phone, Calendar as CalendarIcon, Clock, Filter, ShieldCheck, Sparkles, LayoutGrid, AlertCircle, Database, Save } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -46,9 +46,10 @@ import { toast } from "sonner";
 import { translations } from "@/lib/translations";
 import { ReleaseTrailerDialog } from "./ReleaseTrailerDialog";
 import { ReturnTrailerDialog } from "./ReturnTrailerDialog";
+import { BackupManager } from "./BackupManager";
 
 export function TrailerCalendar() {
-  const { trailers, reservations, clients, addReservation, addClient, language, currentUserId, profiles, updateReservation, deleteReservation, statusColors, checkTrailerAvailability } = useApp();
+  const { trailers, reservations, clients, addReservation, addClient, language, currentUserId, profiles, updateReservation, deleteReservation, statusColors, checkTrailerAvailability, createBackupSnapshot, backups } = useApp();
   const router = useRouter();
 
   const t = translations[language as keyof typeof translations] || translations.pl;
@@ -61,8 +62,18 @@ export function TrailerCalendar() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [trailerSearch, setTrailerSearch] = useState("");
   
+  // Mobile-first calendar view state: 'day' (Agenda), 'timeline3' (3-day compact), or 'grid' (14-day desktop matrix)
+  const [mobileView, setMobileView] = useState<'day' | 'timeline3' | 'grid'>('day');
+  const [selectedMobileDate, setSelectedMobileDate] = useState<Date>(today);
+  const [dayFilter, setDayFilter] = useState<'all' | 'free' | 'rented'>('all');
+
   const viewStartDate = addDays(today, startDateOffset);
   const days = Array.from({ length: 14 }).map((_, i) => addDays(viewStartDate, i));
+  
+  // 28-day horizontal touch ribbon for mobile thumb selection
+  const mobileRibbonDays = Array.from({ length: 28 }).map((_, i) => addDays(today, i - 3));
+  // 3 consecutive days for compact timeline view
+  const timeline3Days = Array.from({ length: 3 }).map((_, i) => addDays(selectedMobileDate, i));
 
   const filteredTrailers = trailers.filter(trailer => {
     const matchesFilter = typeFilter === "all" || trailer.type === typeFilter;
@@ -81,6 +92,7 @@ export function TrailerCalendar() {
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditingReservation, setIsEditingReservation] = useState(false);
   const [viewingReservationId, setViewingReservationId] = useState<string | null>(null);
@@ -131,11 +143,7 @@ export function TrailerCalendar() {
   const handleCellClick = (trailerId: string, date: Date) => {
     const currentToday = startOfToday();
     if (isBefore(date, currentToday)) {
-      toast.error(
-        language === "pl"
-          ? "Nie można utworzyć rezerwacji w terminie wcześniejszym niż dzień obecny!"
-          : "Reservierungen können nicht vor dem aktuellen Tag vorgenommen werden!"
-      );
+      toast.error(t.pastDateError);
       return;
     }
 
@@ -189,11 +197,7 @@ export function TrailerCalendar() {
     const isStartDateChanged = existingStart && !isSameDay(existingStart, selectedDate);
 
     if (isBefore(selectedDate, currentToday) && isStartDateChanged) {
-      toast.error(
-        language === "pl"
-          ? "Nie można przenieść rezerwacji na termin wcześniejszy niż dzień obecny!"
-          : "Das Startdatum darf nicht vor dem aktuellen Tag liegen!"
-      );
+      toast.error(t.pastDateError);
       return;
     }
 
@@ -201,17 +205,13 @@ export function TrailerCalendar() {
     const endDateTime = new Date(`${endDate}T${returnTime}:00`);
     
     if (endDateTime <= startDateTime) {
-      toast.error(
-        language === "pl"
-          ? "Data i godzina zwrotu muszą być późniejsze niż data i godzina odbioru!"
-          : "Das Rückgabedatum muss nach dem Abholdatum liegen!"
-      );
+      toast.error(t.returnAfterPickupError);
       return;
     }
 
     // Check collision
     if (!checkTrailerAvailability(selectedTrailerId, startDateTime, endDateTime, viewingReservationId)) {
-      toast.error("Wskazany termin koliduje z inną rezerwacją. Uwzględnij też 60 minut przerwy.");
+      toast.error(t.collisionError);
       return;
     }
     
@@ -261,11 +261,7 @@ export function TrailerCalendar() {
 
     const currentToday = startOfToday();
     if (isBefore(selectedDate, currentToday)) {
-      toast.error(
-        language === "pl"
-          ? "Nie można utworzyć rezerwacji w terminie wcześniejszym niż dzień obecny!"
-          : "Das Startdatum darf nicht vor dem aktuellen Tag liegen!"
-      );
+      toast.error(t.pastDateError);
       return;
     }
 
@@ -273,17 +269,13 @@ export function TrailerCalendar() {
     const endDateTime = new Date(`${endDate}T${returnTime}:00`);
 
     if (endDateTime <= startDateTime) {
-      toast.error(
-        language === "pl"
-          ? "Data i godzina zwrotu muszą być późniejsze niż data i godzina odbioru!"
-          : "Das Rückgabedatum muss nach dem Abholdatum liegen!"
-      );
+      toast.error(t.returnAfterPickupError);
       return;
     }
 
     // Check collision
     if (!checkTrailerAvailability(selectedTrailerId, startDateTime, endDateTime)) {
-      toast.error("Wskazany termin koliduje z inną rezerwacją. Uwzględnij też 60 minut przerwy.");
+      toast.error(t.collisionError);
       return;
     }
 
@@ -366,24 +358,90 @@ export function TrailerCalendar() {
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
+  // Mobile calculations for selected date
+  const getReservationsOnDate = (trailerId: string, date: Date) => {
+    return reservations.filter(r => {
+      if (r.trailerId !== trailerId) return false;
+      if (r.status === "completed" || r.status === "cancelled") return false;
+      const start = parseISO(r.startDate);
+      const end = parseISO(r.endDate);
+      return isWithinInterval(date, { start, end }) || isSameDay(date, start) || isSameDay(date, end);
+    });
+  };
+
+  const freeTrailersCount = filteredTrailers.filter(tr => getReservationsOnDate(tr.id, selectedMobileDate).length === 0).length;
+  const rentedTrailersCount = filteredTrailers.length - freeTrailersCount;
+
+  const trailersForDayView = filteredTrailers.filter(tr => {
+    const isBooked = getReservationsOnDate(tr.id, selectedMobileDate).length > 0;
+    if (dayFilter === 'free') return !isBooked;
+    if (dayFilter === 'rented') return isBooked;
+    return true;
+  });
+
   return (
-    <div className="flex flex-col h-full space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 p-3 rounded-xl border shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="flex bg-white rounded-lg border shadow-sm p-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" onClick={() => setStartDateOffset(prev => prev - 7)}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" className="h-8 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500" onClick={() => setStartDateOffset(-1)}>
-              {t.today}
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" onClick={() => setStartDateOffset(prev => prev + 7)}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+    <div className="flex flex-col h-full space-y-3 sm:space-y-4">
+      {/* Top Controls Toolbar */}
+      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-2 sm:gap-4 bg-slate-50 p-2.5 sm:p-3 rounded-2xl border shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View mode segmented switcher */}
+          <div className="flex p-1 bg-slate-200/80 rounded-xl gap-1 w-full sm:w-auto">
+            <button
+              onClick={() => setMobileView('day')}
+              className={cn(
+                "flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                mobileView === 'day' 
+                  ? "bg-white text-primary shadow-xs ring-1 ring-slate-900/5 font-extrabold" 
+                  : "text-slate-600 hover:text-slate-900"
+              )}
+            >
+              <CalendarIcon className="w-3.5 h-3.5" />
+              <span>{t.mobileDayView || "Plan dnia"}</span>
+            </button>
+            <button
+              onClick={() => setMobileView('timeline3')}
+              className={cn(
+                "flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                mobileView === 'timeline3' 
+                  ? "bg-white text-primary shadow-xs ring-1 ring-slate-900/5 font-extrabold" 
+                  : "text-slate-600 hover:text-slate-900"
+              )}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>{t.mobileTimelineView || "Kompakt 3 dni"}</span>
+            </button>
+            <button
+              onClick={() => setMobileView('grid')}
+              className={cn(
+                "flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                mobileView === 'grid' 
+                  ? "bg-white text-primary shadow-xs ring-1 ring-slate-900/5 font-extrabold" 
+                  : "text-slate-600 hover:text-slate-900"
+              )}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>{t.desktopGridView || "Pełna siatka"}</span>
+            </button>
           </div>
-          
+
+          {/* Grid navigation controls (when in grid mode) */}
+          {mobileView === 'grid' && (
+            <div className="hidden sm:flex bg-white rounded-lg border shadow-sm p-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" onClick={() => setStartDateOffset(prev => prev - 7)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" className="h-8 px-3 text-[10px] font-black uppercase tracking-widest text-slate-500" onClick={() => setStartDateOffset(-1)}>
+                {t.today}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" onClick={() => setStartDateOffset(prev => prev + 7)}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* Type Filter */}
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v || "all")}>
-            <SelectTrigger className="w-[180px] h-10 border-slate-200 bg-white text-[11px] font-bold uppercase tracking-tight">
+            <SelectTrigger className="w-full sm:w-[170px] h-9 border-slate-200 bg-white text-[11px] font-bold uppercase tracking-tight">
               <SelectValue placeholder={t.allTypes} />
             </SelectTrigger>
             <SelectContent>
@@ -422,25 +480,470 @@ export function TrailerCalendar() {
               </SelectGroup>
             </SelectContent>
           </Select>
-          
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+
+          {/* Quick search input */}
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
               type="search"
-              placeholder="Fahrzeug suchen..."
-              className="pl-9 w-[220px] h-10 border-slate-200 bg-white text-xs font-bold"
+              placeholder={t.searchTrailerPlaceholder || "Szukaj tablicy..."}
+              className="pl-8 w-full sm:w-[170px] h-9 border-slate-200 bg-white text-xs font-bold"
               value={trailerSearch}
               onChange={(e) => setTrailerSearch(e.target.value)}
             />
           </div>
         </div>
-        
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-          {format(days[0], "d MMM yyyy", { locale: dateLocale })} - {format(days[days.length - 1], "d MMM yyyy", { locale: dateLocale })}
+
+        {/* Date indication badge + Quick Backup / Save State Controls */}
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 pt-1 sm:pt-0">
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await createBackupSnapshot();
+                toast.success(
+                  language === "de"
+                    ? "Reservierungsstand gesichert!"
+                    : language === "en"
+                    ? "Reservation state saved!"
+                    : "Zapisano aktualny stan rezerwacji!"
+                );
+              }}
+              className="h-8 px-2.5 text-xs font-bold border-emerald-300 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 flex items-center gap-1.5"
+              title={
+                language === "de"
+                  ? "Schnellsicherung des aktuellen Reservierungsstands"
+                  : language === "en"
+                  ? "Quickly save current reservation state"
+                  : "Szybki zapis aktualnego stanu rezerwacji"
+              }
+            >
+              <Save className="w-3.5 h-3.5 text-emerald-600" />
+              <span>
+                {language === "de"
+                  ? "Stand speichern"
+                  : language === "en"
+                  ? "Save State"
+                  : "Zapisz stan"}
+              </span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBackupDialogOpen(true)}
+              className="h-8 px-2.5 text-xs font-bold border-blue-300 bg-blue-50/80 hover:bg-blue-100 text-blue-900 flex items-center gap-1.5"
+            >
+              <Database className="w-3.5 h-3.5 text-blue-600" />
+              <span>
+                {language === "de"
+                  ? "Backup / Export"
+                  : language === "en"
+                  ? "Backup / Export"
+                  : "Backup / Eksport"}
+              </span>
+              {backups.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-blue-600 text-white text-[9px] font-black">
+                  {backups.length}
+                </span>
+              )}
+            </Button>
+          </div>
+
+          <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            {mobileView === 'day' 
+              ? format(selectedMobileDate, "EEEE, d MMMM yyyy", { locale: dateLocale })
+              : `${format(days[0], "d MMM", { locale: dateLocale })} - ${format(days[days.length - 1], "d MMM yyyy", { locale: dateLocale })}`
+            }
+          </div>
         </div>
       </div>
 
+      {/* ========================================================= */}
+      {/* VIEW 1: Mobile Day View (Agenda) - Star Mobile Feature     */}
+      {/* ========================================================= */}
+      {mobileView === 'day' && (
+        <div className="flex-1 flex flex-col space-y-3 min-h-0">
+          {/* Day Navigation Banner & Ribbon */}
+          <div className="bg-white border rounded-2xl p-3 shadow-xs space-y-3">
+            {/* Header controls: Prev day, Date name, Today jump, Next day */}
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedMobileDate(prev => addDays(prev, -1))}
+                className="h-9 px-2.5 rounded-xl border-slate-200"
+              >
+                <ChevronLeft className="w-4 h-4 mr-0.5" />
+                <span className="text-xs font-bold hidden xs:inline">{t.previous || "Poprzedni"}</span>
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm sm:text-base font-black text-slate-900 tracking-tight capitalize">
+                  {format(selectedMobileDate, "EEEE, d MMMM", { locale: dateLocale })}
+                </span>
+                {isSameDay(selectedMobileDate, today) && (
+                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider">
+                    {t.todayJump || "DZIŚ"}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {!isSameDay(selectedMobileDate, today) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedMobileDate(today)}
+                    className="h-8 px-2 text-[10px] font-black text-blue-600 hover:bg-blue-50 uppercase"
+                  >
+                    {t.todayJump || "DZIŚ"}
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedMobileDate(prev => addDays(prev, 1))}
+                  className="h-9 px-2.5 rounded-xl border-slate-200"
+                >
+                  <span className="text-xs font-bold hidden xs:inline">{t.next || "Następny"}</span>
+                  <ChevronRight className="w-4 h-4 ml-0.5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Horizontal 28-day thumb-scrollable ribbon */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar scroll-smooth">
+              {mobileRibbonDays.map((d, idx) => {
+                const isSelected = isSameDay(d, selectedMobileDate);
+                const isCurrentToday = isSameDay(d, today);
+                // Check if any reservation exists on this day
+                const hasReservations = reservations.some(r => {
+                  if (r.status === "completed" || r.status === "cancelled") return false;
+                  const start = parseISO(r.startDate);
+                  const end = parseISO(r.endDate);
+                  return isWithinInterval(d, { start, end }) || isSameDay(d, start) || isSameDay(d, end);
+                });
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedMobileDate(d)}
+                    className={cn(
+                      "shrink-0 flex flex-col items-center justify-center min-w-[50px] py-2 px-1.5 rounded-xl border transition-all active:scale-95",
+                      isSelected
+                        ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/25 scale-105"
+                        : isCurrentToday
+                        ? "bg-blue-50/80 text-blue-900 border-blue-200 font-bold"
+                        : "bg-slate-50/60 text-slate-700 border-slate-150 hover:bg-slate-100"
+                    )}
+                  >
+                    <span className={cn(
+                      "text-[9px] uppercase font-black tracking-tight",
+                      isSelected ? "text-primary-foreground/90" : "text-slate-400"
+                    )}>
+                      {format(d, "EEE", { locale: dateLocale })}
+                    </span>
+                    <span className="text-sm font-black mt-0.5 leading-none">
+                      {format(d, "d")}
+                    </span>
+                    <span className={cn(
+                      "w-1.5 h-1.5 rounded-full mt-1.5",
+                      hasReservations 
+                        ? (isSelected ? "bg-amber-300" : "bg-blue-500") 
+                        : (isSelected ? "bg-emerald-300" : "bg-slate-200")
+                    )} />
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* KPI Availability Banner & Filter Chips */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>{freeTrailersCount} {t.trailersAvailableCount || "wolnych"}</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800">
+                  <span>{rentedTrailersCount} {t.reservedTrailer || "wynajętych"}</span>
+                </span>
+                <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                  ({filteredTrailers.length} {t.allTrailersCount || "w flocie"})
+                </span>
+              </div>
+
+              {/* Filter chips */}
+              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
+                <button
+                  onClick={() => setDayFilter('all')}
+                  className={cn("px-2 py-1 rounded-md transition-all", dayFilter === 'all' ? "bg-white shadow-xs text-slate-900" : "text-slate-500")}
+                >
+                  {t.filterAll || "Wszystkie"} ({filteredTrailers.length})
+                </button>
+                <button
+                  onClick={() => setDayFilter('free')}
+                  className={cn("px-2 py-1 rounded-md transition-all", dayFilter === 'free' ? "bg-white shadow-xs text-emerald-700" : "text-slate-500")}
+                >
+                  {t.filterFreeOnly || "Wolne"} ({freeTrailersCount})
+                </button>
+                <button
+                  onClick={() => setDayFilter('rented')}
+                  className={cn("px-2 py-1 rounded-md transition-all", dayFilter === 'rented' ? "bg-white shadow-xs text-blue-700" : "text-slate-500")}
+                >
+                  {t.filterRentedOnly || "Zajęte"} ({rentedTrailersCount})
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* List of Trailers as Ergonomic Mobile Cards */}
+          <div className="flex-1 overflow-y-auto space-y-3 pb-8 custom-scrollbar">
+            {trailersForDayView.length === 0 ? (
+              <div className="bg-white border rounded-2xl p-8 text-center text-slate-400">
+                <CalendarIcon className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                <p className="font-bold text-sm">{t.noBookingsToday || "Brak przyczep spełniających wybrane kryteria"}</p>
+              </div>
+            ) : (
+              trailersForDayView.map((trailer) => {
+                const dayReservations = getReservationsOnDate(trailer.id, selectedMobileDate);
+                const isRented = dayReservations.length > 0;
+
+                return (
+                  <div
+                    key={trailer.id}
+                    className={cn(
+                      "bg-white border rounded-2xl p-3.5 sm:p-4 shadow-xs transition-all hover:shadow-md",
+                      isRented ? "border-blue-200/80 bg-blue-50/20" : "border-slate-200"
+                    )}
+                  >
+                    {/* Trailer Card Header */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex px-2 py-1 rounded-lg border border-slate-300 bg-slate-900 text-white font-mono text-xs font-black tracking-tight uppercase shadow-xs">
+                          {trailer.plate}
+                        </span>
+                        <div className="text-xs font-bold text-slate-800 truncate max-w-[180px] sm:max-w-xs">
+                          {t.trailerTypes[trailer.type as keyof typeof t.trailerTypes] || trailer.model}
+                        </div>
+                      </div>
+
+                      {/* Status badge */}
+                      {isRented ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black uppercase tracking-wider">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                          {t.rentedBadge || "ZAJĘTA"}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                          {t.freeBadge || "WOLNA"}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Content Section */}
+                    {isRented ? (
+                      <div className="space-y-2.5 mt-2 pt-2 border-t border-slate-100">
+                        {dayReservations.map((res) => {
+                          const client = clients.find(c => c.id === res.clientId);
+                          const isCompany = client?.type === "company";
+
+                          return (
+                            <div key={res.id} className="bg-white rounded-xl p-3 border border-blue-100 shadow-xs space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="font-bold text-sm text-slate-900 truncate">
+                                  {client?.name || "Klient"}
+                                </div>
+                                {/* Deposit badge (Company 1000 € vs Private 200 €) */}
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shrink-0",
+                                  isCompany 
+                                    ? "bg-amber-100 text-amber-900 border border-amber-300" 
+                                    : "bg-slate-100 text-slate-700"
+                                )}>
+                                  {isCompany ? (t.b2bDepositBadge || "Firma (Kaucja 1000 €)") : (t.privateDepositBadge || "Kaucja 200 €")}
+                                </span>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                  <span>{res.pickupTime || "08:00"} - {res.returnTime || "17:30"}</span>
+                                </div>
+                                <div className="text-[11px] font-semibold text-slate-600">
+                                  {res.startDate} → {res.endDate}
+                                </div>
+                              </div>
+
+                              {/* Mobile Quick Action Buttons for rented trailer */}
+                              <div className="flex items-center gap-2 pt-1">
+                                {client?.phone && (
+                                  <a
+                                    href={`tel:${client.phone}`}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs active:scale-95 transition-transform"
+                                  >
+                                    <Phone className="w-3.5 h-3.5" />
+                                    <span>{t.callClient || "Zadzwoń"}</span>
+                                  </a>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => handleReservationClick(e, res.id)}
+                                  className="flex-1 min-h-[40px] rounded-xl font-bold text-xs border-slate-300 text-slate-700"
+                                >
+                                  {t.viewDetailsBtn || "Szczegóły"}
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedReleaseReservation(res);
+                                    setIsReleaseDialogOpen(true);
+                                  }}
+                                  className="min-h-[40px] rounded-xl font-bold text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-3"
+                                >
+                                  {t.pickups || "Wydaj"}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* Free trailer: Large ergonomic thumb booking button */
+                      <div className="pt-2">
+                        <Button
+                          onClick={() => {
+                            setSelectedTrailerId(trailer.id);
+                            setSelectedDate(selectedMobileDate);
+                            setEndDate(format(addDays(selectedMobileDate, 1), "yyyy-MM-dd"));
+                            setIsDialogOpen(true);
+                          }}
+                          className="w-full min-h-[44px] rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs sm:text-sm shadow-md shadow-primary/20 flex items-center justify-center gap-2 active:scale-98 transition-all"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>{t.quickBookBtn || "Rezerwuj tę przyczepę"} ({trailer.plate})</span>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* VIEW 2: Mobile 3-Day Compact Timeline                      */}
+      {/* ========================================================= */}
+      {mobileView === 'timeline3' && (
+        <div className="bg-white border rounded-2xl shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Day Navigation Banner */}
+          <div className="flex items-center justify-between p-2.5 bg-slate-50 border-b">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedMobileDate(prev => addDays(prev, -3))}
+              className="h-8 px-2 text-xs font-bold"
+            >
+              <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+              <span>-3 dni</span>
+            </Button>
+            <span className="text-xs font-black text-slate-800">
+              {format(timeline3Days[0], "d MMM", { locale: dateLocale })} - {format(timeline3Days[2], "d MMM yyyy", { locale: dateLocale })}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedMobileDate(prev => addDays(prev, 3))}
+              className="h-8 px-2 text-xs font-bold"
+            >
+              <span>+3 dni</span>
+              <ChevronRight className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </div>
+
+          <div className="flex-1 overflow-auto custom-scrollbar">
+            {/* Header row with 3 day columns */}
+            <div className="grid grid-cols-[100px_repeat(3,1fr)] border-b bg-slate-100 text-[10px] font-black uppercase text-slate-500 sticky top-0 z-20">
+              <div className="p-2 border-r">{t.trailer}</div>
+              {timeline3Days.map((d, i) => (
+                <div key={i} className="p-2 text-center border-r last:border-r-0">
+                  <div>{format(d, "EEE", { locale: dateLocale })}</div>
+                  <div className="text-xs text-slate-900 font-bold">{format(d, "d MMM")}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Trailers rows */}
+            {filteredTrailers.map((trailer) => (
+              <div key={trailer.id} className="grid grid-cols-[100px_repeat(3,1fr)] border-b hover:bg-slate-50/50 min-h-[64px]">
+                <div className="p-2 border-r flex flex-col justify-center bg-white sticky left-0 z-10">
+                  <span className="font-mono text-[10px] font-black text-slate-900 uppercase truncate">
+                    {trailer.plate}
+                  </span>
+                  <span className="text-[9px] text-slate-400 truncate mt-0.5">
+                    {trailer.model}
+                  </span>
+                </div>
+
+                {timeline3Days.map((day, i) => {
+                  const dayRes = getReservationsForDay(trailer.id, day);
+                  const isBooked = dayRes.length > 0;
+
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        if (!isBooked) {
+                          handleCellClick(trailer.id, day);
+                        }
+                      }}
+                      className={cn(
+                        "p-1 border-r last:border-r-0 flex flex-col justify-center relative cursor-pointer transition-colors",
+                        isBooked ? "bg-blue-50/40" : "hover:bg-slate-100/60"
+                      )}
+                    >
+                      {isBooked ? (
+                        dayRes.map((res) => {
+                          const client = clients.find(c => c.id === res.clientId);
+                          return (
+                            <div
+                              key={res.id}
+                              onClick={(e) => handleReservationClick(e, res.id)}
+                              className={cn(
+                                "rounded-lg p-1.5 text-[9px] font-bold text-white truncate shadow-xs",
+                                getStatusColor(res.status)
+                              )}
+                            >
+                              <div className="truncate">{client?.name || "Klient"}</div>
+                              <div className="text-[7px] opacity-80">{res.pickupTime || "08:00"}</div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100">
+                          <Plus className="w-3.5 h-3.5 text-slate-300" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* VIEW 3: Full 14-Day Gantt Matrix (Desktop/Power User)      */}
+      {/* ========================================================= */}
+      {mobileView === 'grid' && (
       <div className="bg-white border rounded-xl shadow-sm ring-1 ring-slate-100 flex-1 flex flex-col min-h-0">
         <ScrollArea className="w-full h-full">
           <div className="flex w-max min-w-full relative">
@@ -454,7 +957,7 @@ export function TrailerCalendar() {
                   key={trailer.id} 
                   onDoubleClick={() => router.push(`/trailers/${trailer.id}`)}
                   className="h-16 border-b flex flex-col justify-center px-4 bg-white/95 group/trailer hover:bg-slate-50 transition-colors cursor-pointer"
-                  title="Kliknij dwukrotnie, aby otworzyć kartę przyczepy"
+                  title={language === "pl" ? "Kliknij dwukrotnie, aby otworzyć kartę przyczepy" : language === "de" ? "Doppelklicken, um die Anhängerkarte zu öffnen" : "Double-click to open trailer details"}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="inline-flex px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-900 font-mono text-[10px] font-black tracking-tight uppercase">
@@ -583,9 +1086,27 @@ export function TrailerCalendar() {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
+      )}
+
+      {/* Floating Action Button (FAB) on Mobile Screens for instant thumb booking */}
+      <button
+        onClick={() => {
+          setSelectedDate(selectedMobileDate || today);
+          if (filteredTrailers.length > 0) {
+            setSelectedTrailerId(filteredTrailers[0].id);
+          }
+          setEndDate(format(addDays(selectedMobileDate || today, 1), "yyyy-MM-dd"));
+          setIsDialogOpen(true);
+        }}
+        aria-label={t.newReservationFab || "Nowa rezerwacja"}
+        className="md:hidden fixed bottom-20 right-4 z-30 flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-black py-3 px-4 rounded-full shadow-2xl shadow-primary/40 active:scale-90 transition-transform"
+      >
+        <Plus className="w-5 h-5 stroke-[2.5]" />
+        <span className="text-xs tracking-tight">{t.newReservationFab || "Rezerwuj"}</span>
+      </button>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="w-[95vw] sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>{isCreatingClient ? t.newClient : t.newReservation}</DialogTitle>
             <DialogDescription>
@@ -643,12 +1164,12 @@ export function TrailerCalendar() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="clientAddress">{language === "pl" ? "Adres (Ulica, Kod i Miasto)" : "Adresse (Straße, PLZ, Ort)"}</Label>
+                <Label htmlFor="clientAddress">{language === "pl" ? "Adres (Ulica, Kod i Miasto)" : language === "de" ? "Adresse (Straße, PLZ, Ort)" : "Address (Street, Postal Code, City)"}</Label>
                 <Input 
                   id="clientAddress" 
                   value={newClientAddress} 
                   onChange={(e) => setNewClientAddress(e.target.value)} 
-                  placeholder={language === "pl" ? "np. Berliner Str. 12, 10115 Berlin" : "z.B. Berliner Str. 12, 10115 Berlin"}
+                  placeholder={language === "pl" ? "np. Berliner Str. 12, 10115 Berlin" : language === "de" ? "z.B. Berliner Str. 12, 10115 Berlin" : "e.g. Berliner Str. 12, 10115 Berlin"}
                 />
               </div>
             </div>
@@ -722,11 +1243,7 @@ export function TrailerCalendar() {
                       if (!e.target.value) return;
                       const parsed = parseISO(e.target.value);
                       if (isBefore(parsed, startOfToday())) {
-                        toast.error(
-                          language === "pl"
-                            ? "Nie można wybrać daty wcześniejszej niż dzień obecny!"
-                            : "Das Startdatum darf nicht in der Vergangenheit liegen!"
-                        );
+                        toast.error(t.pastDateError);
                         return;
                       }
                       setSelectedDate(parsed);
@@ -798,7 +1315,7 @@ export function TrailerCalendar() {
 
       {/* View/Edit Reservation Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="w-[95vw] sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>{isEditingReservation ? t.edit : t.reservationDetails}</DialogTitle>
           </DialogHeader>
@@ -882,11 +1399,7 @@ export function TrailerCalendar() {
                           if (!e.target.value) return;
                           const parsed = parseISO(e.target.value);
                           if (isBefore(parsed, startOfToday())) {
-                            toast.error(
-                              language === "pl"
-                                ? "Nie można przenieść rezerwacji na termin wcześniejszy niż dzień obecny!"
-                                : "Das Startdatum darf nicht vor dem aktuellen Tag liegen!"
-                            );
+                            toast.error(t.pastDateError);
                             return;
                           }
                           setSelectedDate(parsed);
@@ -1017,17 +1530,17 @@ export function TrailerCalendar() {
 
                 {res.agreement && (
                   <div className="grid grid-cols-3 items-center gap-4 bg-muted/40 p-3 rounded-lg border">
-                    <span className="font-semibold text-xs">{language === 'pl' ? 'Rozliczenie' : 'Abrechnung'}:</span>
+                    <span className="font-semibold text-xs">{t.billing}:</span>
                     <div className="col-span-2 text-xs space-y-1">
                       {res.agreement.prices?.total ? (
                         <p className="font-bold text-emerald-700">
-                          {language === 'pl' ? 'Kwota wynajmu' : 'Mietpreis'}: {Number(res.agreement.prices.total).toFixed(2)} €
-                          {res.agreement.prices.daily ? ` (${res.agreement.prices.daily} €/${language === 'pl' ? 'dzień' : 'Tag'})` : ''}
+                          {t.rentalCost}: {Number(res.agreement.prices.total).toFixed(2)} €
+                          {res.agreement.prices.daily ? ` (${res.agreement.prices.daily} €/${t.day})` : ''}
                         </p>
                       ) : null}
                       {(res.agreement.deposits?.total || res.agreement.deposits?.general) ? (
                         <p className="text-muted-foreground font-medium">
-                          {language === 'pl' ? 'Kaucja' : 'Kaution'}: {res.agreement.deposits.total || res.agreement.deposits.general} € ({res.agreement.paymentMethod || 'BAR'})
+                          {t.deposit}: {res.agreement.deposits.total || res.agreement.deposits.general} € ({res.agreement.paymentMethod || 'BAR'})
                         </p>
                       ) : null}
                     </div>
@@ -1120,7 +1633,7 @@ export function TrailerCalendar() {
         </DialogContent>
       </Dialog>
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="w-[95vw] sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>{t.areYouSure}</DialogTitle>
             <DialogDescription>
@@ -1150,6 +1663,16 @@ export function TrailerCalendar() {
           setSelectedReturnReservation(null);
         }}
       />
+
+      {/* Database Backup & Restore Modal accessible directly from Calendar */}
+      <Dialog open={isBackupDialogOpen} onOpenChange={setIsBackupDialogOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-[920px] max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Backup System</DialogTitle>
+          </DialogHeader>
+          <BackupManager />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

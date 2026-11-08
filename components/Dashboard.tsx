@@ -56,7 +56,7 @@ export function Dashboard({ onActionClick }: DashboardProps) {
     };
     updateTrailer(updated);
     setIsQuickEditOpen(false);
-    toast.success(language === "pl" ? "Termin TÜV został zaktualizowany!" : "TÜV-Termin wurde aktualisiert!");
+    toast.success(t.tuvUpdated);
   };
 
   const today = new Date();
@@ -179,7 +179,7 @@ export function Dashboard({ onActionClick }: DashboardProps) {
                   <TableHead>{t.tuvExpiry}</TableHead>
                   <TableHead>{t.status}</TableHead>
                   <TableHead>{t.notes}</TableHead>
-                  <TableHead className="text-right">{language === "pl" ? "Akcja" : "Aktion"}</TableHead>
+                  <TableHead className="text-right">{t.actionLabel}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -218,7 +218,7 @@ export function Dashboard({ onActionClick }: DashboardProps) {
                            onClick={() => handleQuickEdit(trailer)}
                          >
                            <Wrench className="w-3 h-3" />
-                           {language === "pl" ? "Szybka Edycja" : "Schnellbearbeitung"}
+                           {t.quickEdit}
                          </Button>
                        </TableCell>
                      </TableRow>
@@ -235,7 +235,7 @@ export function Dashboard({ onActionClick }: DashboardProps) {
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>
-              {language === "pl" ? "Szybka edycja terminu TÜV" : "Schnellbearbeitung TÜV-Termin"}
+              {t.tuvQuickEditTitle}
             </DialogTitle>
             <div className="text-sm text-slate-500 mt-1">
               {editingTrailer?.plate} - {editingTrailer?.model || t.trailer}
@@ -247,7 +247,7 @@ export function Dashboard({ onActionClick }: DashboardProps) {
               {/* Year & Month Selection Center */}
               <div className="absolute flex flex-col items-center justify-center z-20 bg-white border border-slate-200 shadow-md rounded-full w-28 h-28 text-center">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
-                  {language === "pl" ? "ROK" : "JAHR"}
+                  {t.year}
                 </span>
                 <div className="flex items-center gap-2 my-1">
                   <button 
@@ -269,7 +269,9 @@ export function Dashboard({ onActionClick }: DashboardProps) {
                 <span className="text-[10px] font-black text-primary uppercase tracking-wider">
                   {language === "pl" 
                     ? ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"][selectedMonth] 
-                    : ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"][selectedMonth]
+                    : language === "de"
+                    ? ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"][selectedMonth]
+                    : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][selectedMonth]
                   }
                 </span>
               </div>
@@ -282,7 +284,8 @@ export function Dashboard({ onActionClick }: DashboardProps) {
                 const isSelected = selectedMonth === i;
                 const monthNamesPl = ["Sty", "Lut", "Mar", "Kwi", "Maj", "Cze", "Lip", "Sie", "Wrze", "Paź", "Lis", "Gru"];
                 const monthNamesDe = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
-                const monthLabel = language === "pl" ? monthNamesPl[i] : monthNamesDe[i];
+                const monthNamesEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const monthLabel = language === "pl" ? monthNamesPl[i] : language === "de" ? monthNamesDe[i] : monthNamesEn[i];
 
                 return (
                   <button
@@ -309,10 +312,10 @@ export function Dashboard({ onActionClick }: DashboardProps) {
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setIsQuickEditOpen(false)}>
-              {language === "pl" ? "Anuluj" : "Abbrechen"}
+              {t.cancel}
             </Button>
             <Button onClick={handleSaveTuv}>
-              {language === "pl" ? "Zatwierdź" : "Bestätigen"}
+              {t.confirm}
             </Button>
           </DialogFooter>
         </DialogContent>
