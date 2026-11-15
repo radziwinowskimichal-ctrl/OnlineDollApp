@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { CalendarDays, LayoutDashboard, Truck, Users, Archive, Database, Wrench } from 'lucide-react';
+import { CalendarDays, LayoutDashboard, Truck, Users, Archive, Database, Wrench, ShieldAlert } from 'lucide-react';
 import { useApp } from '@/lib/context';
 import { translations } from '@/lib/translations';
 
@@ -22,6 +22,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ activeTab, onT
     { id: 'workshop', label: t.workshop || 'Warsztat', icon: Wrench, badge: unreadWorkshopNotificationsCount },
     { id: 'daily', label: t.dashboard || 'Operacje', icon: LayoutDashboard },
     { id: 'trailers', label: t.trailersHub || 'Flota', icon: Truck },
+    { id: 'tuv', label: t.tuvNavLabel || 'TÜV', icon: ShieldAlert },
     { id: 'clients', label: t.clientsCrm || 'Klienci', icon: Users },
     { id: 'archive', label: t.archive || 'Archiwum', icon: Archive },
     { id: 'backup', label: 'Backup', icon: Database },

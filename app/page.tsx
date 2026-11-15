@@ -13,7 +13,7 @@ import { Archive as ArchiveComponent } from "@/components/Archive";
 import { BackupManager } from "@/components/BackupManager";
 import { LoginScreen } from "@/components/LoginScreen";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Truck, CalendarDays, Users, Archive, LogOut, User, LayoutDashboard, BarChart3, Settings as SettingsIcon, Cloud, Database, ShieldCheck, Lock, Wrench } from "lucide-react";
+import { Truck, CalendarDays, Users, Archive, LogOut, User, LayoutDashboard, BarChart3, Settings as SettingsIcon, Cloud, Database, ShieldCheck, Lock, Wrench, ShieldAlert } from "lucide-react";
 import { useApp } from "@/lib/context";
 import { translations } from "@/lib/translations";
 import { getWorkshopI18n } from "@/lib/workshop-i18n";
@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { WorkshopModule } from "@/components/workshop/WorkshopModule";
+import { TuvManager } from "@/components/TuvManager";
 
 function HomeContent() {
   const searchParams = useSearchParams();
@@ -31,7 +32,9 @@ function HomeContent() {
     currentUserId,
     currentUser,
     isAdmin,
+    isOffice,
     isMechanic,
+    canManage,
     logoutUser,
     isHydrated,
     backups,
@@ -44,7 +47,11 @@ function HomeContent() {
 
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
-      if (tabFromUrl === "reports" && !isAdmin) {
+      if (tabFromUrl === "reports" && !canManage("settings.edit")) {
+        setTimeout(() => setActiveTab("calendar"), 0);
+        return;
+      }
+      if (tabFromUrl === "tuv" && isMechanic) {
         setTimeout(() => setActiveTab("calendar"), 0);
         return;
       }
@@ -52,11 +59,12 @@ function HomeContent() {
         setActiveTab(tabFromUrl);
       }, 0);
     }
-  }, [tabFromUrl, activeTab, isAdmin]);
+  }, [tabFromUrl, activeTab, isOffice, isMechanic, canManage]);
 
   // Update URL so back navigation from /trailers/:id acts logically
   const handleTabChange = (tabId: string) => {
-    if (tabId === "reports" && !isAdmin) return;
+    if (tabId === "reports" && !canManage("settings.edit")) return;
+    if (tabId === "tuv" && isMechanic) return;
     setActiveTab(tabId);
     window.history.replaceState(null, "", `/?tab=${tabId}`);
   };
@@ -141,15 +149,16 @@ function HomeContent() {
   const allMenuItems = [
     { id: "daily", label: t.dashboard, icon: LayoutDashboard, adminOnly: false },
     { id: "trailers", label: t.trailersHub, icon: Truck, adminOnly: false },
+    { id: "tuv", label: t.tuvNavLabel, icon: ShieldAlert, adminOnly: false },
     { id: "calendar", label: t.calendar, icon: CalendarDays, adminOnly: false },
     { id: "workshop", label: t.workshop || "Warsztat", icon: Wrench, adminOnly: false },
     { id: "clients", label: t.clientsCrm, icon: Users, adminOnly: false },
     { id: "archive", label: t.archive, icon: Archive, adminOnly: false },
     { id: "backup", label: "Backup", icon: Database, adminOnly: false },
-    { id: "reports", label: t.reports || "Raporty", icon: BarChart3, adminOnly: true },
+    { id: "reports", label: t.reports || "Raporty", icon: BarChart3, adminOnly: false },
   ];
 
-  const menuItems = allMenuItems.filter((item) => !item.adminOnly || isAdmin);
+  const menuItems = allMenuItems.filter((item) => !item.adminOnly || isOffice);
 
   return (
     <div className="flex min-h-screen relative pb-16 md:pb-0">
@@ -261,7 +270,7 @@ function HomeContent() {
                   "hidden md:inline-flex text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full",
                   isAdmin ? "bg-amber-200 text-amber-900" : "bg-slate-200 text-slate-700"
                 )}>
-                  {isAdmin ? t.roleAdmin : t.roleEmployee}
+                  {isAdmin ? t.roleAdmin : isOffice ? t.roleEmployee : t.roleMechanic}
                 </span>
               </div>
             )}
@@ -275,7 +284,7 @@ function HomeContent() {
         <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-8 pb-20 md:pb-8 custom-scrollbar">
           <div className="max-w-[1600px] mx-auto space-y-4 sm:space-y-6 md:space-y-8">
             {/* Unified Dashboard / Stats at top */}
-            {activeTab !== 'calendar' && activeTab !== 'backup' && activeTab !== 'workshop' && (
+            {activeTab !== 'calendar' && activeTab !== 'backup' && activeTab !== 'workshop' && activeTab !== 'tuv' && (
               <section className="animate-in fade-in duration-700">
                 <Dashboard onActionClick={(action) => handleTabChange(action)} />
               </section>
@@ -292,6 +301,11 @@ function HomeContent() {
                 <TabsContent value="trailers" className="mt-0">
                   <div className="bg-card border rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl shadow-slate-200/50 min-h-[450px]">
                     <TrailerHub />
+                  </div>
+                </TabsContent>
+                <TabsContent value="tuv" className="mt-0">
+                  <div className="bg-card border rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl shadow-slate-200/50 min-h-[450px]">
+                    <TuvManager />
                   </div>
                 </TabsContent>
                 <TabsContent value="calendar" className="mt-0">
@@ -321,18 +335,11 @@ function HomeContent() {
                 </TabsContent>
                 <TabsContent value="reports" className="mt-0">
                   <div className="bg-card border rounded-2xl p-6 sm:p-12 shadow-xl shadow-slate-200/50 min-h-[450px] flex items-center justify-center">
-                    {isAdmin ? (
-                      <div className="text-center">
-                        <BarChart3 className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground/20 mx-auto mb-4" />
-                        <h3 className="text-lg sm:text-xl font-bold text-slate-800">{t.reportsTitle}</h3>
-                        <p className="text-sm text-muted-foreground">{t.reportsDesc}</p>
-                      </div>
-                    ) : (
-                      <div className="text-center space-y-2">
-                        <Lock className="w-10 h-10 text-amber-500 mx-auto" />
-                        <h3 className="text-base font-bold text-slate-800">{t.adminOnlyAction}</h3>
-                      </div>
-                    )}
+                    <div className="text-center">
+                      <BarChart3 className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground/20 mx-auto mb-4" />
+                      <h3 className="text-lg sm:text-xl font-bold text-slate-800">{t.reportsTitle}</h3>
+                      <p className="text-sm text-muted-foreground">{t.reportsDesc}</p>
+                    </div>
                   </div>
                 </TabsContent>
               </div>

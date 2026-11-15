@@ -9,6 +9,7 @@ import {
   UserProfile,
   UserRole,
   BackupSnapshot,
+  TuvHistoryEntry,
   initialTrailers,
   initialClients,
   initialReservations,
@@ -36,6 +37,10 @@ import {
   translateWorkshopStatic,
 } from "./workshop-text-localizer";
 import { getWorkshopI18n } from "./workshop-i18n";
+import {
+  OFFICE_MANAGEABLE_ACTIONS,
+  type OfficeAction,
+} from "./permissions";
 import { ColorOption } from "./colors";
 import { toast } from "sonner";
 import { translations } from "./translations";
@@ -56,6 +61,9 @@ import {
 
 export type StatusColors = Record<Reservation["status"], ColorOption>;
 
+/** Office permission matrix (single source of truth lives in lib/permissions.ts). */
+export type ManageableAction = OfficeAction;
+
 const defaultStatusColors: StatusColors = {
   paid: "green",
   invoiced: "amber",
@@ -69,18 +77,36 @@ function cleanForFirestore<T>(data: T): T {
   return JSON.parse(JSON.stringify(data));
 }
 
+/**
+ * Maps a stored profile document to a role.
+ * An explicit "employee" role always wins — otherwise a display name such as "Admin"
+ * would silently escalate someone into administrator rights.
+ */
+export function resolveProfileRole(p: {
+  id?: string;
+  role?: string;
+  username?: string;
+}): UserRole {
+  const explicitRole = p.role === "admin" || p.role === "employee" || p.role === "mechanic"
+    ? p.role
+    : undefined;
+  if (explicitRole) return explicitRole;
+
+  const isAdminAccount =
+    p.id === "admin" || String(p.username || "").toLowerCase() === "admin";
+  if (isAdminAccount) return "admin";
+  if (p.id?.startsWith("m_")) return "mechanic";
+  return "employee";
+}
+
 function normalizeProfiles(raw: any[]): UserProfile[] {
   const map = new Map<string, UserProfile>();
   initialProfiles.forEach((p) => map.set(p.id, { ...p }));
   raw.forEach((p) => {
     if (!p || !p.id) return;
-    const isAdminAccount =
-      p.id === "admin" ||
-      p.role === "admin" ||
-      String(p.username || "").toLowerCase() === "admin";
-    const isMechanicAccount =
-      !isAdminAccount &&
-      (p.role === "mechanic" || p.id.startsWith("m_"));
+    const resolvedRole = resolveProfileRole(p);
+    const isAdminAccount = resolvedRole === "admin";
+    const isMechanicAccount = resolvedRole === "mechanic";
     const name = isAdminAccount
       ? p.name || "Administrator"
       : p.name || p.displayName || p.username || "Pracownik";
@@ -90,7 +116,7 @@ function normalizeProfiles(raw: any[]): UserProfile[] {
       id: p.id,
       name,
       username,
-      role: isAdminAccount ? "admin" : isMechanicAccount ? "mechanic" : "employee",
+      role: resolvedRole,
       unitName: p.unitName || seedMatch?.unitName,
       specialty: p.specialty ?? seedMatch?.specialty,
       isOnline: Boolean(p.isOnline),
@@ -121,6 +147,11 @@ interface AppState {
   isAdmin: boolean;
   isMechanic: boolean;
   isOffice: boolean;
+  /**
+   * Action-level permission gate for office work (admin + employee, never mechanics).
+   * Use `canManage(action)` instead of comparing roles inline.
+   */
+  canManage: (action: ManageableAction) => boolean;
   language: string;
   statusColors: StatusColors;
   isHydrated: boolean;
@@ -132,6 +163,12 @@ interface AppState {
   updateTrailerStatus: (id: string, status: Trailer["status"]) => void;
   addTrailer: (trailer: Trailer) => void;
   updateTrailer: (trailer: Trailer) => void;
+  /**
+   * Narrowly scoped permission: OFFICE users (admin + employee) may edit the TÜV expiry date
+   * without receiving full fleet/trailer editing rights. Every change is written to
+   * `tuvHistory` with the profile that made it.
+   */
+  updateTrailerTuv: (id: string, newExpiry?: string, note?: string) => boolean;
   deleteTrailer: (id: string) => void;
   resetTrailers: () => void;
   updateClientBalance: (id: string, amount: number) => void;
@@ -253,6 +290,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isAdmin = userRole === "admin";
   const isMechanic = userRole === "mechanic";
   const isOffice = userRole === "admin" || userRole === "employee";
+
+  // Office staff (admin + employees) may run every office operation; mechanics never may.
+  const canManage = (action: ManageableAction): boolean =>
+    isOffice && OFFICE_MANAGEABLE_ACTIONS.includes(action);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -668,8 +709,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     specialty?: string
   ): boolean => {
     const t = translations[language as keyof typeof translations] || translations.pl;
-    // Mechanics can be added by any Office dispatcher or Admin; Office employees require Admin
-    if (role === "mechanic" ? !isOffice : !isAdmin) {
+    // Any office user (admin or employee) may register new staff accounts
+    if (!canManage("profile.manage")) {
       toast.error(t.adminOnlyAction);
       return false;
     }
@@ -757,7 +798,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast.error(t.adminOnlyAction);
       return false;
     }
-    if (target.role === "mechanic" ? !isOffice : !isAdmin) {
+    if (!canManage("profile.manage")) {
       toast.error(t.adminOnlyAction);
       return false;
     }
@@ -1085,7 +1126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteWorkshopOrder = (orderId: string) => {
-    if (!isAdmin) {
+    if (!canManage("workshop.delete")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1394,7 +1435,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteReservation = (id: string) => {
-    if (!isAdmin) {
+    if (!canManage("reservation.edit")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1419,7 +1460,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const addTrailer = (trailer: Trailer) => {
-    if (!isAdmin) {
+    if (!canManage("fleet.edit")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1432,7 +1473,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const updateTrailer = (trailer: Trailer) => {
-    if (!isAdmin) {
+    if (!canManage("fleet.edit")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1444,8 +1485,66 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatchAction("UPDATE_TRAILER", trailer);
   };
 
+  // =========================================================================
+  // TÜV EXPIRY MANAGEMENT — office-level permission (admin + employee)
+  // Deliberately narrow: it only touches `tuvExpiry` + audit fields, so office
+  // staff can maintain inspection deadlines without full vehicle master-data rights.
+  // =========================================================================
+  const updateTrailerTuv = (id: string, newExpiry?: string, note?: string): boolean => {
+    const t = translations[language as keyof typeof translations] || translations.pl;
+    if (!isOffice) {
+      toast.error(t.adminOnlyAction);
+      return false;
+    }
+    const existing = trailers.find((tr) => tr.id === id);
+    if (!existing) return false;
+
+    let normalizedExpiry: string | undefined = undefined;
+    if (newExpiry) {
+      const parsed = new Date(newExpiry);
+      if (Number.isNaN(parsed.getTime())) {
+        toast.error(t.tuvInvalidDate || "Invalid date");
+        return false;
+      }
+      normalizedExpiry = parsed.toISOString();
+    }
+
+    const previousExpiry = existing.tuvExpiry;
+    if ((previousExpiry || "") === (normalizedExpiry || "")) {
+      return false;
+    }
+
+    const actorName = currentUser?.name || "—";
+    const actorId = currentUser?.id || "unknown";
+    const nowIso = new Date().toISOString();
+    const entry: TuvHistoryEntry = {
+      id: `tuv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: nowIso,
+      previousExpiry,
+      newExpiry: normalizedExpiry || "",
+      changedById: actorId,
+      changedByName: actorName,
+      note: note?.trim() ? note.trim() : undefined,
+    };
+
+    const updated: Trailer = {
+      ...existing,
+      tuvExpiry: normalizedExpiry,
+      tuvLastUpdatedAt: nowIso,
+      tuvLastUpdatedBy: actorName,
+      tuvHistory: [entry, ...(existing.tuvHistory || [])].slice(0, 60),
+    };
+
+    setTrailers((prev) => prev.map((tr) => (tr.id === id ? updated : tr)));
+    setDoc(doc(db, "trailers", id), cleanForFirestore(updated)).catch((err) =>
+      handleFirestoreError(err, OperationType.UPDATE, `trailers/${id}`)
+    );
+    dispatchAction("UPDATE_TRAILER", updated);
+    return true;
+  };
+
   const deleteTrailer = (id: string) => {
-    if (!isAdmin) {
+    if (!canManage("fleet.edit")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1459,7 +1558,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const resetTrailers = () => {
     const t = translations[language as keyof typeof translations] || translations.pl;
-    if (!isAdmin) {
+    if (!canManage("fleet.edit")) {
       toast.error(t.adminOnlyAction);
       return;
     }
@@ -1474,7 +1573,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const updateClientBalance = (id: string, amount: number) => {
-    if (!isAdmin) {
+    if (!canManage("client.balance")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1509,7 +1608,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteClient = (id: string) => {
-    if (!isAdmin) {
+    if (!canManage("client.edit")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1522,7 +1621,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const updateStatusColor = (status: Reservation["status"], color: ColorOption) => {
-    if (!isAdmin) {
+    if (!canManage("settings.edit")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1612,7 +1711,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteBackupSnapshot = async (id: string): Promise<void> => {
-    if (!isAdmin) {
+    if (!canManage("data.restore")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1644,7 +1743,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createSafetyBackup?: boolean;
     }
   ): Promise<void> => {
-    if (!isAdmin) {
+    if (!canManage("data.restore")) {
       const t = translations[language as keyof typeof translations] || translations.pl;
       toast.error(t.adminOnlyAction);
       return;
@@ -1802,6 +1901,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isAdmin,
         isMechanic,
         isOffice,
+        canManage,
         language,
         statusColors,
         isHydrated,
@@ -1813,6 +1913,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateTrailerStatus,
         addTrailer,
         updateTrailer,
+        updateTrailerTuv,
         deleteTrailer,
         resetTrailers,
         updateClientBalance,

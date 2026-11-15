@@ -40,6 +40,21 @@ export type TrailerType =
   | "Wpycharka do kabli"
   | "Kompresor";
 
+/**
+ * Audit trail entry for a TÜV expiry date change.
+ * Records ONLY the technical expiry date change + the office profile that made it
+ * (no customer personal data).
+ */
+export interface TuvHistoryEntry {
+  id: string;
+  timestamp: string; // ISO
+  previousExpiry?: string; // ISO date or undefined when there was no date yet
+  newExpiry: string; // ISO date
+  changedById: string;
+  changedByName: string;
+  note?: string;
+}
+
 export interface Trailer {
   id: string;
   plate?: string;
@@ -52,6 +67,10 @@ export interface Trailer {
   model?: string;
   specs?: string;
   notes?: string;
+  // TÜV management audit (who/when last edited the expiry date)
+  tuvLastUpdatedAt?: string; // ISO
+  tuvLastUpdatedBy?: string;
+  tuvHistory?: TuvHistoryEntry[];
 }
 
 export interface Client {

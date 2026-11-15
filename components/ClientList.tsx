@@ -60,7 +60,7 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 
 export function ClientList() {
-  const { clients, reservations, trailers, addClient, updateClient, deleteClient, updateClientBalance, language, isAdmin } = useApp();
+  const { clients, reservations, trailers, addClient, updateClient, deleteClient, updateClientBalance, language, canManage } = useApp();
   const t = translations[language as keyof typeof translations] || translations.pl;
 
   // Search & Filter state
@@ -313,7 +313,7 @@ export function ClientList() {
   };
 
   const handleOpenBalanceDialog = (client: Client) => {
-    if (!isAdmin) {
+    if (!canManage("client.balance")) {
       toast.error(t.adminOnlyAction);
       return;
     }
@@ -359,7 +359,7 @@ export function ClientList() {
   };
 
   const handleRequestDelete = (client: Client) => {
-    if (!isAdmin) {
+    if (!canManage("client.edit")) {
       toast.error(t.adminOnlyAction);
       return;
     }
@@ -756,7 +756,7 @@ export function ClientList() {
                         )}>
                           {client.balance > 0 ? `+${client.balance}` : client.balance} €
                         </span>
-                        {isAdmin && (
+                        {canManage("client.balance") && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -850,17 +850,15 @@ export function ClientList() {
                       >
                         <Edit className="h-4 w-4 text-slate-600" />
                       </Button>
-                      {isAdmin && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50" 
-                          onClick={() => handleRequestDelete(client)}
-                          title={t.deleteClientBtn}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50" 
+                        onClick={() => handleRequestDelete(client)}
+                        title={t.deleteClientBtn}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1464,7 +1462,7 @@ export function ClientList() {
                         )}
                       </div>
                     </div>
-                    {isAdmin && (
+                    {canManage("client.balance") && (
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -1544,19 +1542,15 @@ export function ClientList() {
                 </div>
 
                 <DialogFooter className="border-t pt-3 flex justify-between items-center sm:justify-between">
-                  {isAdmin ? (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                      onClick={() => handleRequestDelete(client)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" />
-                      {t.deleteClientBtn}
-                    </Button>
-                  ) : (
-                    <span className="text-[11px] text-slate-400 font-medium">{t.adminOnlyAction}</span>
-                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                    onClick={() => handleRequestDelete(client)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    {t.deleteClientBtn}
+                  </Button>
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>{t.close}</Button>
                     <Button 

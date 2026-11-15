@@ -40,7 +40,7 @@ import { Trailer, TrailerType } from "@/lib/store";
 
 export function TrailerHub() {
   const router = useRouter();
-  const { trailers, addTrailer, updateTrailer, deleteTrailer, resetTrailers, language, isAdmin } = useApp();
+  const { trailers, addTrailer, updateTrailer, updateTrailerTuv, deleteTrailer, resetTrailers, language, isOffice, canManage } = useApp();
   const t = translations[language as keyof typeof translations] || translations.pl;
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -126,7 +126,7 @@ export function TrailerHub() {
   };
 
   const handleOpenDialog = (trailer?: Trailer) => {
-    if (!isAdmin) {
+    if (!canManage("fleet.edit")) {
       toast.error(t.adminOnlyAction);
       return;
     }
@@ -189,7 +189,7 @@ export function TrailerHub() {
   };
 
   const handleDelete = (id: string) => {
-    if (!isAdmin) {
+    if (!canManage("fleet.edit")) {
       toast.error(t.adminOnlyAction);
       return;
     }
@@ -201,7 +201,7 @@ export function TrailerHub() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4 bg-slate-50 p-2 rounded-xl border">
         <div className="flex flex-wrap items-center gap-2">
-          {isAdmin && (
+          {canManage("fleet.edit") && (
             <Button variant="ghost" onClick={() => resetTrailers()} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-primary h-10">
               <ArrowUpDown className="mr-2 h-4 w-4" />
               {t.syncData}
@@ -261,7 +261,7 @@ export function TrailerHub() {
           </div>
         </div>
 
-        {isAdmin && (
+        {canManage("fleet.edit") && (
           <Button onClick={() => handleOpenDialog()} className="rounded-lg font-black uppercase tracking-tighter px-6 shadow-lg shadow-primary/20 h-10">
             <Plus className="mr-2 h-4 w-4" />
             {t.addTrailer}
@@ -328,7 +328,7 @@ export function TrailerHub() {
                   {getSortIcon('status')}
                 </div>
               </TableHead>
-              {isAdmin && (
+              {isOffice && (
                 <TableHead className="text-[10px] font-black uppercase tracking-wider h-12 text-right">{t.actions}</TableHead>
               )}
             </TableRow>
@@ -393,7 +393,7 @@ export function TrailerHub() {
                     {trailer.status === "available" ? t.available : t.service}
                   </Badge>
                 </TableCell>
-                {isAdmin && (
+                {isOffice && (
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={(e) => { e.stopPropagation(); handleOpenDialog(trailer); }}>
@@ -417,88 +417,107 @@ export function TrailerHub() {
             <DialogTitle>{editingTrailer ? t.editTrailer : t.addTrailer}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="plate">{t.plate}</Label>
-                <Input id="plate" value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="ABC-123" />
+            <div className="grid gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="plate">{t.plate}</Label>
+                  <Input id="plate" value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="ABC-123" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="vin">{t.vin}</Label>
+                  <Input id="vin" value={vin} onChange={(e) => setVin(e.target.value)} placeholder="WBA..." />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="vin">{t.vin}</Label>
-                <Input id="vin" value={vin} onChange={(e) => setVin(e.target.value)} placeholder="WBA..." />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="model">{t.model}</Label>
-                <Input id="model" value={model} onChange={(e) => setModel(e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="type">{t.type}</Label>
-                <Select value={type} onValueChange={(v) => v && setType(v as TrailerType)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
-                    {Object.entries(t.trailerCategories || {}).map(([key, label]) => {
-                      const categoryTypeMap: Record<string, string[]> = {
-                        tarpaulin: ["Planen_Tieflader", "Planen_Hochlader", "Planen_Drehschemel"],
-                        box: ["Koffer_Flügeltüre", "Koffer_Rampe", "Koffer_Alu", "Koffer_Deckel", "Koffer_Wielkogabarytowy"],
-                        open: ["Offen_Standard", "Offen_Laubgitter"],
-                        fridge: ["fridge_unit"],
-                        tipper: ["Kipper_Tylny", "Kipper_Trójstronny"],
-                        carTransporter: ["Laweta_Uchylna", "Laweta_Platforma", "Maszynowa", "Laweta_Obrotnica"],
-                        motorcycle: ["Motocyklowa_Szynowa", "Opuszczana"],
-                        horse: ["horse_trailer"],
-                        truck: ["LKW_Plane", "LKW_Kipper", "LKW_Tandem"]
-                      };
-                      const types = categoryTypeMap[key] || [];
-                      return (
-                        <div key={key}>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30">
-                            {label}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="model">{t.model}</Label>
+                  <Input id="model" value={model} onChange={(e) => setModel(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="type">{t.type}</Label>
+                  <Select value={type} onValueChange={(v) => v && setType(v as TrailerType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {Object.entries(t.trailerCategories || {}).map(([key, label]) => {
+                        const categoryTypeMap: Record<string, string[]> = {
+                          tarpaulin: ["Planen_Tieflader", "Planen_Hochlader", "Planen_Drehschemel"],
+                          box: ["Koffer_Flügeltüre", "Koffer_Rampe", "Koffer_Alu", "Koffer_Deckel", "Koffer_Wielkogabarytowy"],
+                          open: ["Offen_Standard", "Offen_Laubgitter"],
+                          fridge: ["fridge_unit"],
+                          tipper: ["Kipper_Tylny", "Kipper_Trójstronny"],
+                          carTransporter: ["Laweta_Uchylna", "Laweta_Platforma", "Maszynowa", "Laweta_Obrotnica"],
+                          motorcycle: ["Motocyklowa_Szynowa", "Opuszczana"],
+                          horse: ["horse_trailer"],
+                          truck: ["LKW_Plane", "LKW_Kipper", "LKW_Tandem"]
+                        };
+                        const types = categoryTypeMap[key] || [];
+                        return (
+                          <div key={key}>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30">
+                              {label}
+                            </div>
+                            {types.map((tKey) => (
+                              <SelectItem key={tKey} value={tKey}>
+                                {t.trailerTypes[tKey as keyof typeof t.trailerTypes]}
+                              </SelectItem>
+                            ))}
                           </div>
-                          {types.map((tKey) => (
-                            <SelectItem key={tKey} value={tKey}>
-                              {t.trailerTypes[tKey as keyof typeof t.trailerTypes]}
-                            </SelectItem>
-                          ))}
+                        );
+                      })}
+                      <div>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30">
+                          {t.other}
                         </div>
-                      );
-                    })}
-                    <div>
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/30">
-                        {t.other}
+                        {["winch", "cableTrailer", "auxWinch", "cablePusher", "compressor"].map((tKey) => (
+                          <SelectItem key={tKey} value={tKey}>
+                            {t.trailerTypes[tKey as keyof typeof t.trailerTypes] || tKey}
+                          </SelectItem>
+                        ))}
                       </div>
-                      {["winch", "cableTrailer", "auxWinch", "cablePusher", "compressor"].map((tKey) => (
-                        <SelectItem key={tKey} value={tKey}>
-                          {t.trailerTypes[tKey as keyof typeof t.trailerTypes] || tKey}
-                        </SelectItem>
-                      ))}
-                    </div>
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="specs">{t.specs}</Label>
+                <Input id="specs" value={specs} onChange={(e) => setSpecs(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="notes">{t.trailerNotes}</Label>
+                <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="capacity">{t.capacity}</Label>
+                <Input id="capacity" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="dimensions">{t.dimensions}</Label>
+                <Input id="dimensions" value={dimensions} onChange={(e) => setDimensions(e.target.value)} />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="specs">{t.specs}</Label>
-              <Input id="specs" value={specs} onChange={(e) => setSpecs(e.target.value)} />
+
+            <div className="grid gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <Label htmlFor="tuvExpiry" className="font-black uppercase tracking-wider text-primary">
+                {t.tuvExpiry}
+              </Label>
+              <Input id="tuvExpiry" type="date" value={tuvExpiry} onChange={(e) => setTuvExpiry(e.target.value)} className="h-9 bg-white font-bold dark:bg-slate-950" />
+              <div className="flex flex-wrap gap-1.5">
+                <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] font-bold"
+                  onClick={() => { const d = new Date(); d.setMonth(d.getMonth() + 24); setTuvExpiry(format(d, "yyyy-MM-dd")); }}>
+                  {t.tuvQuick2Years}
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] font-bold"
+                  onClick={() => { const d = new Date(); d.setMonth(d.getMonth() + 12); setTuvExpiry(format(d, "yyyy-MM-dd")); }}>
+                  {t.tuvQuick1Year}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="h-7 text-[10px] font-bold text-rose-600" onClick={() => setTuvExpiry("")}>
+                  {t.tuvQuickClear}
+                </Button>
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="notes">{t.trailerNotes}</Label>
-              <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="capacity">{t.capacity}</Label>
-              <Input id="capacity" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="dimensions">{t.dimensions}</Label>
-              <Input id="dimensions" value={dimensions} onChange={(e) => setDimensions(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="tuvExpiry">{t.tuvExpiry}</Label>
-              <Input id="tuvExpiry" type="date" value={tuvExpiry} onChange={(e) => setTuvExpiry(e.target.value)} />
-            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="status">{t.status}</Label>
               <Select value={status} onValueChange={(v: any) => setStatus(v)}>

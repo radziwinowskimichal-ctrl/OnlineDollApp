@@ -39,6 +39,7 @@ export function Settings() {
     currentUser,
     currentUserId,
     isAdmin,
+    canManage,
     profiles,
     addEmployeeProfile,
     deleteEmployeeProfile,
@@ -223,7 +224,7 @@ export function Settings() {
             </Select>
           </div>
 
-          {currentUser && isAdmin ? (
+          {currentUser && canManage("settings.edit") ? (
             <>
               <div className="pt-4 border-t">
                 <h4 className="text-sm font-medium mb-4">{globalT.statusColors}</h4>
@@ -377,9 +378,9 @@ export function Settings() {
             </>
           ) : currentUser ? (
             <div className="pt-4 border-t">
-              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                <Lock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                <span>{globalT.adminOnlyAction}</span>
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>{globalT.officeModeNotice}</span>
               </div>
             </div>
           ) : null}
