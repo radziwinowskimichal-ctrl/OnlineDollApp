@@ -60,7 +60,7 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 
 export function ClientList() {
-  const { clients, reservations, trailers, addClient, updateClient, deleteClient, updateClientBalance, language } = useApp();
+  const { clients, reservations, trailers, addClient, updateClient, deleteClient, updateClientBalance, language, isAdmin } = useApp();
   const t = translations[language as keyof typeof translations] || translations.pl;
 
   // Search & Filter state
@@ -313,6 +313,10 @@ export function ClientList() {
   };
 
   const handleOpenBalanceDialog = (client: Client) => {
+    if (!isAdmin) {
+      toast.error(t.adminOnlyAction);
+      return;
+    }
     setClientForBalance(client);
     setBalanceAdjustmentAmount("");
     setBalanceAdjustmentType("add");
@@ -355,6 +359,10 @@ export function ClientList() {
   };
 
   const handleRequestDelete = (client: Client) => {
+    if (!isAdmin) {
+      toast.error(t.adminOnlyAction);
+      return;
+    }
     const hasActiveReservations = reservations.some(
       r => r.clientId === client.id && r.status !== "completed" && r.status !== "cancelled"
     );
@@ -748,15 +756,17 @@ export function ClientList() {
                         )}>
                           {client.balance > 0 ? `+${client.balance}` : client.balance} €
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-5 px-1.5 text-[10px] text-slate-500 hover:text-slate-900 border border-slate-200 bg-slate-50"
-                          onClick={() => handleOpenBalanceDialog(client)}
-                          title={t.adjustBalanceBtn}
-                        >
-                          +/-
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-1.5 text-[10px] text-slate-500 hover:text-slate-900 border border-slate-200 bg-slate-50"
+                            onClick={() => handleOpenBalanceDialog(client)}
+                            title={t.adjustBalanceBtn}
+                          >
+                            +/-
+                          </Button>
+                        )}
                       </div>
                       <div className="flex items-center gap-1">
                         {client.type === "company" ? (
@@ -840,15 +850,17 @@ export function ClientList() {
                       >
                         <Edit className="h-4 w-4 text-slate-600" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50" 
-                        onClick={() => handleRequestDelete(client)}
-                        title={t.deleteClientBtn}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {isAdmin && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50" 
+                          onClick={() => handleRequestDelete(client)}
+                          title={t.deleteClientBtn}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -879,7 +891,7 @@ export function ClientList() {
 
       {/* CREATE / EDIT CLIENT MODAL */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[96vw] sm:w-[94vw] sm:max-w-[94vw] max-h-[94dvh]">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center justify-between">
               <span>{editingClient ? t.editClient : t.newClient}</span>
@@ -1316,7 +1328,7 @@ export function ClientList() {
 
       {/* CLIENT DETAILS / DOSSIER DIALOG */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[96vw] sm:w-[94vw] sm:max-w-[94vw] max-h-[94dvh]">
           {selectedClientForDetails && (() => {
             const client = selectedClientForDetails;
             const clientRes = reservations.filter(r => r.clientId === client.id);
@@ -1452,15 +1464,17 @@ export function ClientList() {
                         )}
                       </div>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="w-full text-xs font-bold h-7 mt-2"
-                      onClick={() => handleOpenBalanceDialog(client)}
-                    >
-                      <DollarSign className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                      {t.adjustBalanceBtn}
-                    </Button>
+                    {isAdmin && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="w-full text-xs font-bold h-7 mt-2"
+                        onClick={() => handleOpenBalanceDialog(client)}
+                      >
+                        <DollarSign className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                        {t.adjustBalanceBtn}
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -1530,15 +1544,19 @@ export function ClientList() {
                 </div>
 
                 <DialogFooter className="border-t pt-3 flex justify-between items-center sm:justify-between">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                    onClick={() => handleRequestDelete(client)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5 mr-1" />
-                    {t.deleteClientBtn}
-                  </Button>
+                  {isAdmin ? (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                      onClick={() => handleRequestDelete(client)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      {t.deleteClientBtn}
+                    </Button>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 font-medium">{t.adminOnlyAction}</span>
+                  )}
                   <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>{t.close}</Button>
                     <Button 
@@ -1561,7 +1579,7 @@ export function ClientList() {
 
       {/* QUICK BALANCE ADJUSTMENT DIALOG */}
       <Dialog open={isBalanceDialogOpen} onOpenChange={setIsBalanceDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent size="compact" className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>{t.balanceAdjustmentTitle}</DialogTitle>
           </DialogHeader>
@@ -1648,7 +1666,7 @@ export function ClientList() {
 
       {/* CONFIRM DELETE CLIENT DIALOG */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent size="compact" className="sm:max-w-[460px]">
           <DialogHeader>
             <DialogTitle className="text-rose-600 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-rose-600" />

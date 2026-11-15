@@ -30,7 +30,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onActionClick }: DashboardProps) {
-  const { trailers, reservations, language, updateTrailer } = useApp();
+  const { trailers, reservations, language, updateTrailer, isAdmin } = useApp();
   const t = translations[language as keyof typeof translations] || translations.pl;
   
   const [isTuvDialogOpen, setIsTuvDialogOpen] = useState(false);
@@ -164,7 +164,7 @@ export function Dashboard({ onActionClick }: DashboardProps) {
       </Card>
 
       <Dialog open={isTuvDialogOpen} onOpenChange={setIsTuvDialogOpen}>
-        <DialogContent className="max-w-[95vw] lg:max-w-5xl">
+        <DialogContent className="w-[96vw] sm:w-[94vw] sm:max-w-[94vw] max-h-[94dvh]">
           <DialogHeader>
             <DialogTitle>{t.tuvExpiring}</DialogTitle>
           </DialogHeader>
@@ -211,15 +211,19 @@ export function Dashboard({ onActionClick }: DashboardProps) {
                         {trailer.notes || "-"}
                        </TableCell>
                        <TableCell className="text-right whitespace-nowrap">
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           className="h-7 px-2 font-black text-[10px] uppercase tracking-wider text-primary border-primary/20 hover:bg-primary/5 transition-colors gap-1"
-                           onClick={() => handleQuickEdit(trailer)}
-                         >
-                           <Wrench className="w-3 h-3" />
-                           {t.quickEdit}
-                         </Button>
+                         {isAdmin ? (
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             className="h-7 px-2 font-black text-[10px] uppercase tracking-wider text-primary border-primary/20 hover:bg-primary/5 transition-colors gap-1"
+                             onClick={() => handleQuickEdit(trailer)}
+                           >
+                             <Wrench className="w-3 h-3" />
+                             {t.quickEdit}
+                           </Button>
+                         ) : (
+                           <span className="text-[10px] text-muted-foreground font-semibold">-</span>
+                         )}
                        </TableCell>
                      </TableRow>
                    );
@@ -232,7 +236,7 @@ export function Dashboard({ onActionClick }: DashboardProps) {
 
       {/* TUV Quick Edit Circular Calendar Dialog */}
       <Dialog open={isQuickEditOpen} onOpenChange={setIsQuickEditOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent size="compact" className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>
               {t.tuvQuickEditTitle}

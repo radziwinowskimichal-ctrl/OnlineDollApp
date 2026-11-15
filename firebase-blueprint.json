@@ -80,7 +80,9 @@
         "id": { "type": "string", "description": "Unique user identifier" },
         "username": { "type": "string", "description": "Login username" },
         "displayName": { "type": "string", "description": "Full display name" },
-        "role": { "type": "string", "enum": ["admin", "manager", "employee"], "description": "Access level" },
+        "role": { "type": "string", "enum": ["admin", "manager", "employee", "mechanic"], "description": "Access level" },
+        "unitName": { "type": "string", "description": "Assigned workshop unit for mechanics" },
+        "specialty": { "type": "string", "description": "Technical specialization of the mechanic" },
         "pin": { "type": "string", "description": "Quick PIN authentication code" },
         "avatar": { "type": "string", "description": "Avatar image or color code" },
         "createdAt": { "type": "string", "description": "Profile creation timestamp" }
@@ -105,6 +107,56 @@
         "trailers": { "type": "array", "description": "Array of trailer records" }
       },
       "required": ["id", "name", "createdAt", "reservationsCount"]
+    },
+    "WorkshopOrder": {
+      "title": "WorkshopOrder",
+      "description": "GDPR/RODO anonymized technical workshop work order accessible to mechanics and office",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["unassigned", "new", "in_progress", "report_sent", "waiting_client", "approved", "rejected", "completed"] },
+        "assetCategory": { "type": "string", "enum": ["trailer", "equipment"] },
+        "plate": { "type": "string" },
+        "vehicleType": { "type": "string" },
+        "equipmentName": { "type": "string" },
+        "machineNumber": { "type": "string" },
+        "unitName": { "type": "string" },
+        "assignedMechanicIds": { "type": "array" },
+        "scopeTypes": { "type": "array" }
+      },
+      "required": ["id", "orderNumber", "status", "assetCategory", "unitName", "assignedMechanicIds"]
+    },
+    "WorkshopOrderClientDetails": {
+      "title": "WorkshopOrderClientDetails",
+      "description": "Office-only confidential customer PII and cost approval state for a workshop order",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "estimatedCostEur": { "type": "number" },
+        "clientDecision": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["orderId", "clientName"]
+    },
+    "WorkshopNotification": {
+      "title": "WorkshopNotification",
+      "description": "Real-time workshop notification for mechanics and office dispatchers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "targetRole": { "type": "string", "enum": ["office", "mechanic"] },
+        "orderId": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["id", "createdAt", "targetRole", "orderId", "title"]
     }
   },
   "firestore": {
@@ -127,6 +179,18 @@
     "/backups/{backupId}": {
       "schema": "#/entities/BackupSnapshot",
       "description": "Cloud database snapshots for backup and restoration"
+    },
+    "/workshopOrders/{orderId}": {
+      "schema": "#/entities/WorkshopOrder",
+      "description": "RODO-safe technical workshop orders"
+    },
+    "/workshopOrderClientDetails/{orderId}": {
+      "schema": "#/entities/WorkshopOrderClientDetails",
+      "description": "Office-only confidential customer PII for workshop orders"
+    },
+    "/workshopNotifications/{notificationId}": {
+      "schema": "#/entities/WorkshopNotification",
+      "description": "Real-time push/in-app notifications between Office and Mechanics"
     }
   }
 }

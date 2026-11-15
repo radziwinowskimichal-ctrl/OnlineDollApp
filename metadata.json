@@ -1,6 +1,6 @@
 {
   "name": "Remix: Smart Trailer",
   "description": "to opcja Online ta nowsza która będę robił. stary build ma inną bazę danych",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -267,7 +267,7 @@ export function Archive() {
 
       {/* View Photos Dialog */}
       <Dialog open={!!viewPhotos} onOpenChange={(open) => !open && setViewPhotos(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[96vw] sm:w-[94vw] sm:max-w-[94vw] max-h-[94dvh]">
           <DialogHeader>
             <DialogTitle>{t.visualDocumentationPickup.split(" (")[0]} ({viewPhotos?.type})</DialogTitle>
           </DialogHeader>

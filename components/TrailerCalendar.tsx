@@ -49,7 +49,7 @@ import { ReturnTrailerDialog } from "./ReturnTrailerDialog";
 import { BackupManager } from "./BackupManager";
 
 export function TrailerCalendar() {
-  const { trailers, reservations, clients, addReservation, addClient, language, currentUserId, profiles, updateReservation, deleteReservation, statusColors, checkTrailerAvailability, createBackupSnapshot, backups } = useApp();
+  const { trailers, reservations, clients, addReservation, addClient, language, currentUserId, profiles, updateReservation, deleteReservation, statusColors, checkTrailerAvailability, createBackupSnapshot, backups, isAdmin } = useApp();
   const router = useRouter();
 
   const t = translations[language as keyof typeof translations] || translations.pl;
@@ -235,11 +235,19 @@ export function TrailerCalendar() {
   };
 
   const handleDeleteReservation = () => {
+    if (!isAdmin) {
+      toast.error(t.adminOnlyAction);
+      return;
+    }
     if (!viewingReservationId) return;
     setIsDeleteDialogOpen(true);
   };
 
   const confirmDeleteReservation = () => {
+    if (!isAdmin) {
+      toast.error(t.adminOnlyAction);
+      return;
+    }
     if (!viewingReservationId) return;
     const res = reservations.find(r => r.id === viewingReservationId);
     if (res) {
@@ -1106,7 +1114,7 @@ export function TrailerCalendar() {
       </button>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
+        <DialogContent className="w-[96vw] sm:w-[94vw] sm:max-w-[94vw] max-h-[94dvh] rounded-2xl">
           <DialogHeader>
             <DialogTitle>{isCreatingClient ? t.newClient : t.newReservation}</DialogTitle>
             <DialogDescription>
@@ -1315,7 +1323,7 @@ export function TrailerCalendar() {
 
       {/* View/Edit Reservation Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
+        <DialogContent className="w-[96vw] sm:w-[94vw] sm:max-w-[94vw] max-h-[94dvh] rounded-2xl">
           <DialogHeader>
             <DialogTitle>{isEditingReservation ? t.edit : t.reservationDetails}</DialogTitle>
           </DialogHeader>
@@ -1581,7 +1589,11 @@ export function TrailerCalendar() {
           <DialogFooter className="flex sm:justify-between items-center w-full">
             {isEditingReservation ? (
               <>
-                <Button variant="destructive" onClick={handleDeleteReservation}>{t.delete}</Button>
+                {isAdmin ? (
+                  <Button variant="destructive" onClick={handleDeleteReservation}>{t.delete}</Button>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground font-medium">{t.adminOnlyAction}</span>
+                )}
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setIsEditingReservation(false)}>{t.cancel}</Button>
                   <Button onClick={handleUpdateReservation}>{t.saveChanges}</Button>
@@ -1633,7 +1645,7 @@ export function TrailerCalendar() {
         </DialogContent>
       </Dialog>
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-[480px] max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
+        <DialogContent size="compact" className="w-[95vw] sm:max-w-[480px] rounded-2xl">
           <DialogHeader>
             <DialogTitle>{t.areYouSure}</DialogTitle>
             <DialogDescription>
@@ -1666,7 +1678,7 @@ export function TrailerCalendar() {
 
       {/* Database Backup & Restore Modal accessible directly from Calendar */}
       <Dialog open={isBackupDialogOpen} onOpenChange={setIsBackupDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-[920px] max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6">
+        <DialogContent className="w-[96vw] sm:w-[94vw] sm:max-w-[94vw] max-h-[94dvh] rounded-2xl">
           <DialogHeader>
             <DialogTitle className="sr-only">Backup System</DialogTitle>
           </DialogHeader>

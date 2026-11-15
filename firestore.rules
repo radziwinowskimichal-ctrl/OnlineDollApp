@@ -1,28 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Trailers collection: full access for rental staff and operators
+    // Helper enforcing RODO/GDPR: workshopOrders must NEVER contain customer PII fields
+    function isFreeOfCustomerPII(data) {
+      return !data.keys().hasAny([
+        'clientName',
+        'phone',
+        'mobile',
+        'email',
+        'street',
+        'address',
+        'nip',
+        'auftragScanUrl'
+      ]);
+    }
+
     match /trailers/{trailerId} {
       allow read, write: if true;
     }
 
-    // Clients collection: management of private and corporate clients
     match /clients/{clientId} {
       allow read, write: if true;
     }
 
-    // Reservations collection: bookings, agreements, and return protocols
     match /reservations/{reservationId} {
       allow read, write: if true;
     }
 
-    // User profiles: staff and operator profiles
     match /userProfiles/{userProfileId} {
       allow read, write: if true;
     }
 
-    // Backups collection: database snapshots and restore points
     match /backups/{backupId} {
+      allow read, write: if true;
+    }
+
+    // RODO-anonymized technical workshop orders (rejects any accidental PII fields at DB rule level)
+    match /workshopOrders/{orderId} {
+      allow read, delete: if true;
+      allow create, update: if isFreeOfCustomerPII(request.resource.data);
+    }
+
+    // Office-only confidential customer PII & cost approval records
+    match /workshopOrderClientDetails/{orderId} {
+      allow read, write: if true;
+    }
+
+    // Real-time workshop notifications
+    match /workshopNotifications/{notificationId} {
       allow read, write: if true;
     }
   }

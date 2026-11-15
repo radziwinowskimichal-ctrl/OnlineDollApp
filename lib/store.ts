@@ -138,13 +138,21 @@ export interface Reservation {
   history?: ReservationHistoryEntry[];
   pickupPhotos?: string[];
   returnPhotos?: string[];
+  pickupTime?: string;
+  returnTime?: string;
 }
 
 const today = startOfDay(new Date());
 
+export type UserRole = "admin" | "employee" | "mechanic";
+
 export interface UserProfile {
   id: string;
   name: string;
+  username?: string;
+  role: UserRole;
+  unitName?: string;
+  specialty?: string;
   isOnline: boolean;
 }
 
@@ -163,10 +171,39 @@ export interface BackupSnapshot {
 }
 
 export const initialProfiles: UserProfile[] = [
-  { id: "u1", name: "Erwin", isOnline: false },
-  { id: "u2", name: "Steffi", isOnline: false },
-  { id: "u3", name: "BOSS", isOnline: false },
+  { id: "admin", name: "Administrator", username: "admin", role: "admin", isOnline: false },
+  { id: "u1", name: "Erwin", username: "Erwin", role: "employee", isOnline: false },
+  { id: "u2", name: "Steffi", username: "Steffi", role: "employee", isOnline: false },
+  { id: "u3", name: "BOSS", username: "BOSS", role: "employee", isOnline: false },
+  {
+    id: "m_andy",
+    name: "Andy",
+    username: "Andy",
+    role: "mechanic",
+    unitName: "Hala 1 – Serwis Przyczep & TÜV",
+    specialty: "TÜV, Kundendienst & Układy hamulcowe",
+    isOnline: false,
+  },
+  {
+    id: "m_michal",
+    name: "Michal",
+    username: "Michal",
+    role: "mechanic",
+    unitName: "Hala 2 – Maszyny Budowlane & Hydraulika",
+    specialty: "Maszyny budowlane, Hydraulika & Elektryka 24V",
+    isOnline: false,
+  },
 ];
+
+export function getProfileLogin(profile: UserProfile): string {
+  if (profile.role === "admin" || profile.id === "admin") return "admin";
+  return profile.username || profile.name;
+}
+
+export function getExpectedPassword(profile: UserProfile): string {
+  if (profile.role === "admin" || profile.id === "admin") return "admin";
+  return profile.name;
+}
 
 export const initialTrailers: Trailer[] = [
   // 📦 Przyczepy z plandeką (Planenanhänger)

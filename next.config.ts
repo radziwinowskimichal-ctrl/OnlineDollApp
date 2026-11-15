@@ -8,6 +8,22 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  serverExternalPackages: ['better-sqlite3'],
+  experimental: {
+    webpackMemoryOptimizations: true,
+    cpus: 1,
+    workerThreads: false,
+    optimizePackageImports: [
+      'lucide-react',
+      'date-fns',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-label',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-select',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-tabs',
+    ],
+  },
   // Allow access to remote image placeholder.
   images: {
     remotePatterns: [
@@ -28,6 +44,9 @@ const nextConfig: NextConfig = {
       config.watchOptions = {
         ignored: /.*/,
       };
+    }
+    if (!dev) {
+      config.cache = false;
     }
     return config;
   },

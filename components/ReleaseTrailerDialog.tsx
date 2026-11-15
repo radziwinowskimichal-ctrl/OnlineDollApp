@@ -301,7 +301,7 @@ export function ReleaseTrailerDialog({ reservation, isOpen, onClose }: ReleaseTr
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-[95vw] lg:max-w-[50vw] w-full max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[96vw] sm:w-[94vw] sm:max-w-[94vw] max-h-[94dvh]">
           <DialogHeader>
             <DialogTitle>{t.releaseTrailerTitle}</DialogTitle>
           </DialogHeader>

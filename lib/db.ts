@@ -1,15 +1,17 @@
 import Database from 'better-sqlite3';
 import { initialTrailers, initialClients, initialReservations, initialProfiles } from './store';
+import {
+  initialWorkshopOrders,
+  initialWorkshopClientDetails,
+  initialWorkshopNotifications,
+} from './workshop-types';
 import path from 'path';
 
-// Define database location
 const dbPath = path.join(process.cwd(), 'database.db');
 const db = new Database(dbPath);
 
-// Enable WAL mode for better concurrency
 db.pragma('journal_mode = WAL');
 
-// Initialize schema if empty
 db.exec(`
   CREATE TABLE IF NOT EXISTS trailers (
     id TEXT PRIMARY KEY,
@@ -35,9 +37,23 @@ db.exec(`
     id TEXT PRIMARY KEY,
     data TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS workshop_orders (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS workshop_client_details (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS workshop_notifications (
+    id TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+  );
 `);
 
-// Insert initial data if tables are empty
 const countTrailer = (db.prepare('SELECT COUNT(*) as count FROM trailers').get() as { count: number }).count;
 if (countTrailer === 0) {
   const insertTrailer = db.prepare('INSERT INTO trailers (id, data) VALUES (?, ?)');
@@ -56,10 +72,25 @@ if (countRes === 0) {
   initialReservations.forEach(r => insertRes.run(r.id, JSON.stringify(r)));
 }
 
-const countProfile = (db.prepare('SELECT COUNT(*) as count FROM profiles').get() as { count: number }).count;
-if (countProfile === 0) {
-  const insertProfile = db.prepare('INSERT INTO profiles (id, data) VALUES (?, ?)');
-  initialProfiles.forEach(p => insertProfile.run(p.id, JSON.stringify(p)));
+const existingProfiles = db.prepare('SELECT id FROM profiles').all() as Array<{ id: string }>;
+const existingProfileIds = new Set(existingProfiles.map((p) => p.id));
+const insertProfile = db.prepare('INSERT OR IGNORE INTO profiles (id, data) VALUES (?, ?)');
+initialProfiles.forEach((p) => {
+  if (!existingProfileIds.has(p.id)) {
+    insertProfile.run(p.id, JSON.stringify(p));
+  }
+});
+
+const countWorkshopOrders = (db.prepare('SELECT COUNT(*) as count FROM workshop_orders').get() as { count: number }).count;
+if (countWorkshopOrders === 0) {
+  const insertWO = db.prepare('INSERT INTO workshop_orders (id, data) VALUES (?, ?)');
+  initialWorkshopOrders.forEach((o) => insertWO.run(o.id, JSON.stringify(o)));
+
+  const insertWCD = db.prepare('INSERT INTO workshop_client_details (id, data) VALUES (?, ?)');
+  initialWorkshopClientDetails.forEach((d) => insertWCD.run(d.orderId, JSON.stringify(d)));
+
+  const insertWN = db.prepare('INSERT INTO workshop_notifications (id, data) VALUES (?, ?)');
+  initialWorkshopNotifications.forEach((n) => insertWN.run(n.id, JSON.stringify(n)));
 }
 
 export default db;

@@ -40,7 +40,7 @@ import { Trailer, TrailerType } from "@/lib/store";
 
 export function TrailerHub() {
   const router = useRouter();
-  const { trailers, addTrailer, updateTrailer, deleteTrailer, resetTrailers, language } = useApp();
+  const { trailers, addTrailer, updateTrailer, deleteTrailer, resetTrailers, language, isAdmin } = useApp();
   const t = translations[language as keyof typeof translations] || translations.pl;
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -126,6 +126,10 @@ export function TrailerHub() {
   };
 
   const handleOpenDialog = (trailer?: Trailer) => {
+    if (!isAdmin) {
+      toast.error(t.adminOnlyAction);
+      return;
+    }
     if (trailer) {
       setEditingTrailer(trailer);
       setPlate(trailer.plate || "");
@@ -185,6 +189,10 @@ export function TrailerHub() {
   };
 
   const handleDelete = (id: string) => {
+    if (!isAdmin) {
+      toast.error(t.adminOnlyAction);
+      return;
+    }
     deleteTrailer(id);
     toast.success(t.trailerDeleted);
   };
@@ -193,10 +201,12 @@ export function TrailerHub() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4 bg-slate-50 p-2 rounded-xl border">
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" onClick={() => resetTrailers()} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-primary h-10">
-            <ArrowUpDown className="mr-2 h-4 w-4" />
-            {t.syncData}
-          </Button>
+          {isAdmin && (
+            <Button variant="ghost" onClick={() => resetTrailers()} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-primary h-10">
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              {t.syncData}
+            </Button>
+          )}
 
           <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v || "all")}>
             <SelectTrigger className="w-[180px] h-10 border-slate-200 bg-white text-[11px] font-bold uppercase tracking-tight">
@@ -251,10 +261,12 @@ export function TrailerHub() {
           </div>
         </div>
 
-        <Button onClick={() => handleOpenDialog()} className="rounded-lg font-black uppercase tracking-tighter px-6 shadow-lg shadow-primary/20 h-10">
-          <Plus className="mr-2 h-4 w-4" />
-          {t.addTrailer}
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => handleOpenDialog()} className="rounded-lg font-black uppercase tracking-tighter px-6 shadow-lg shadow-primary/20 h-10">
+            <Plus className="mr-2 h-4 w-4" />
+            {t.addTrailer}
+          </Button>
+        )}
       </div>
 
       <div className="overflow-hidden">
@@ -316,7 +328,9 @@ export function TrailerHub() {
                   {getSortIcon('status')}
                 </div>
               </TableHead>
-              <TableHead className="text-[10px] font-black uppercase tracking-wider h-12 text-right">{t.actions}</TableHead>
+              {isAdmin && (
+                <TableHead className="text-[10px] font-black uppercase tracking-wider h-12 text-right">{t.actions}</TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -379,16 +393,18 @@ export function TrailerHub() {
                     {trailer.status === "available" ? t.available : t.service}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={(e) => { e.stopPropagation(); handleOpenDialog(trailer); }}>
-                      <Edit className="h-4 w-4 text-slate-400" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={(e) => { e.stopPropagation(); handleDelete(trailer.id); }}>
-                      <Trash2 className="h-4 w-4 text-rose-400" />
-                    </Button>
-                  </div>
-                </TableCell>
+                {isAdmin && (
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={(e) => { e.stopPropagation(); handleOpenDialog(trailer); }}>
+                        <Edit className="h-4 w-4 text-slate-400" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={(e) => { e.stopPropagation(); handleDelete(trailer.id); }}>
+                        <Trash2 className="h-4 w-4 text-rose-400" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
