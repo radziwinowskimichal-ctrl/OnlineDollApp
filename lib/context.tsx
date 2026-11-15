@@ -9,6 +9,7 @@ import {
   UserProfile,
   UserRole,
   BackupSnapshot,
+  TuvHistoryEntry,
   initialTrailers,
   initialClients,
   initialReservations,
@@ -132,6 +133,12 @@ interface AppState {
   updateTrailerStatus: (id: string, status: Trailer["status"]) => void;
   addTrailer: (trailer: Trailer) => void;
   updateTrailer: (trailer: Trailer) => void;
+  /**
+   * Narrowly scoped permission: OFFICE users (admin + employee) may edit the TÜV expiry date
+   * without receiving full fleet/trailer editing rights. Every change is written to
+   * `tuvHistory` with the profile that made it.
+   */
+  updateTrailerTuv: (id: string, newExpiry?: string, note?: string) => boolean;
   deleteTrailer: (id: string) => void;
   resetTrailers: () => void;
   updateClientBalance: (id: string, amount: number) => void;
@@ -1444,6 +1451,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatchAction("UPDATE_TRAILER", trailer);
   };
 
+  // =========================================================================
+  // TÜV EXPIRY MANAGEMENT — office-level permission (admin + employee)
+  // Deliberately narrow: it only touches `tuvExpiry` + audit fields, so office
+  // staff can maintain inspection deadlines without full vehicle master-data rights.
+  // =========================================================================
+  const updateTrailerTuv = (id: string, newExpiry?: string, note?: string): boolean => {
+    const t = translations[language as keyof typeof translations] || translations.pl;
+    if (!isOffice) {
+      toast.error(t.adminOnlyAction);
+      return false;
+    }
+    const existing = trailers.find((tr) => tr.id === id);
+    if (!existing) return false;
+
+    let normalizedExpiry: string | undefined = undefined;
+    if (newExpiry) {
+      const parsed = new Date(newExpiry);
+      if (Number.isNaN(parsed.getTime())) {
+        toast.error(t.tuvInvalidDate || "Invalid date");
+        return false;
+      }
+      normalizedExpiry = parsed.toISOString();
+    }
+
+    const previousExpiry = existing.tuvExpiry;
+    if ((previousExpiry || "") === (normalizedExpiry || "")) {
+      return false;
+    }
+
+    const actorName = currentUser?.name || "—";
+    const actorId = currentUser?.id || "unknown";
+    const nowIso = new Date().toISOString();
+    const entry: TuvHistoryEntry = {
+      id: `tuv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: nowIso,
+      previousExpiry,
+      newExpiry: normalizedExpiry || "",
+      changedById: actorId,
+      changedByName: actorName,
+      note: note?.trim() ? note.trim() : undefined,
+    };
+
+    const updated: Trailer = {
+      ...existing,
+      tuvExpiry: normalizedExpiry,
+      tuvLastUpdatedAt: nowIso,
+      tuvLastUpdatedBy: actorName,
+      tuvHistory: [entry, ...(existing.tuvHistory || [])].slice(0, 60),
+    };
+
+    setTrailers((prev) => prev.map((tr) => (tr.id === id ? updated : tr)));
+    setDoc(doc(db, "trailers", id), cleanForFirestore(updated)).catch((err) =>
+      handleFirestoreError(err, OperationType.UPDATE, `trailers/${id}`)
+    );
+    dispatchAction("UPDATE_TRAILER", updated);
+    return true;
+  };
+
   const deleteTrailer = (id: string) => {
     if (!isAdmin) {
       const t = translations[language as keyof typeof translations] || translations.pl;
@@ -1813,6 +1878,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateTrailerStatus,
         addTrailer,
         updateTrailer,
+        updateTrailerTuv,
         deleteTrailer,
         resetTrailers,
         updateClientBalance,

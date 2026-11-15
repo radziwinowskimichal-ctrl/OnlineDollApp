@@ -13,7 +13,7 @@ import { Archive as ArchiveComponent } from "@/components/Archive";
 import { BackupManager } from "@/components/BackupManager";
 import { LoginScreen } from "@/components/LoginScreen";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Truck, CalendarDays, Users, Archive, LogOut, User, LayoutDashboard, BarChart3, Settings as SettingsIcon, Cloud, Database, ShieldCheck, Lock, Wrench } from "lucide-react";
+import { Truck, CalendarDays, Users, Archive, LogOut, User, LayoutDashboard, BarChart3, Settings as SettingsIcon, Cloud, Database, ShieldCheck, Lock, Wrench, ShieldAlert } from "lucide-react";
 import { useApp } from "@/lib/context";
 import { translations } from "@/lib/translations";
 import { getWorkshopI18n } from "@/lib/workshop-i18n";
@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { WorkshopModule } from "@/components/workshop/WorkshopModule";
+import { TuvManager } from "@/components/TuvManager";
 
 function HomeContent() {
   const searchParams = useSearchParams();
@@ -48,15 +49,20 @@ function HomeContent() {
         setTimeout(() => setActiveTab("calendar"), 0);
         return;
       }
+      if (tabFromUrl === "tuv" && isMechanic) {
+        setTimeout(() => setActiveTab("calendar"), 0);
+        return;
+      }
       setTimeout(() => {
         setActiveTab(tabFromUrl);
       }, 0);
     }
-  }, [tabFromUrl, activeTab, isAdmin]);
+  }, [tabFromUrl, activeTab, isAdmin, isMechanic]);
 
   // Update URL so back navigation from /trailers/:id acts logically
   const handleTabChange = (tabId: string) => {
     if (tabId === "reports" && !isAdmin) return;
+    if (tabId === "tuv" && isMechanic) return;
     setActiveTab(tabId);
     window.history.replaceState(null, "", `/?tab=${tabId}`);
   };
@@ -141,6 +147,7 @@ function HomeContent() {
   const allMenuItems = [
     { id: "daily", label: t.dashboard, icon: LayoutDashboard, adminOnly: false },
     { id: "trailers", label: t.trailersHub, icon: Truck, adminOnly: false },
+    { id: "tuv", label: t.tuvNavLabel, icon: ShieldAlert, adminOnly: false },
     { id: "calendar", label: t.calendar, icon: CalendarDays, adminOnly: false },
     { id: "workshop", label: t.workshop || "Warsztat", icon: Wrench, adminOnly: false },
     { id: "clients", label: t.clientsCrm, icon: Users, adminOnly: false },
@@ -275,7 +282,7 @@ function HomeContent() {
         <main className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-8 pb-20 md:pb-8 custom-scrollbar">
           <div className="max-w-[1600px] mx-auto space-y-4 sm:space-y-6 md:space-y-8">
             {/* Unified Dashboard / Stats at top */}
-            {activeTab !== 'calendar' && activeTab !== 'backup' && activeTab !== 'workshop' && (
+            {activeTab !== 'calendar' && activeTab !== 'backup' && activeTab !== 'workshop' && activeTab !== 'tuv' && (
               <section className="animate-in fade-in duration-700">
                 <Dashboard onActionClick={(action) => handleTabChange(action)} />
               </section>
@@ -292,6 +299,11 @@ function HomeContent() {
                 <TabsContent value="trailers" className="mt-0">
                   <div className="bg-card border rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl shadow-slate-200/50 min-h-[450px]">
                     <TrailerHub />
+                  </div>
+                </TabsContent>
+                <TabsContent value="tuv" className="mt-0">
+                  <div className="bg-card border rounded-2xl p-4 sm:p-6 md:p-8 shadow-xl shadow-slate-200/50 min-h-[450px]">
+                    <TuvManager />
                   </div>
                 </TabsContent>
                 <TabsContent value="calendar" className="mt-0">
