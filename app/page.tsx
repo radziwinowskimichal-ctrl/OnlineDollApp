@@ -32,7 +32,9 @@ function HomeContent() {
     currentUserId,
     currentUser,
     isAdmin,
+    isOffice,
     isMechanic,
+    canManage,
     logoutUser,
     isHydrated,
     backups,
@@ -45,7 +47,7 @@ function HomeContent() {
 
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
-      if (tabFromUrl === "reports" && !isAdmin) {
+      if (tabFromUrl === "reports" && !canManage("settings.edit")) {
         setTimeout(() => setActiveTab("calendar"), 0);
         return;
       }
@@ -57,11 +59,11 @@ function HomeContent() {
         setActiveTab(tabFromUrl);
       }, 0);
     }
-  }, [tabFromUrl, activeTab, isAdmin, isMechanic]);
+  }, [tabFromUrl, activeTab, isOffice, isMechanic, canManage]);
 
   // Update URL so back navigation from /trailers/:id acts logically
   const handleTabChange = (tabId: string) => {
-    if (tabId === "reports" && !isAdmin) return;
+    if (tabId === "reports" && !canManage("settings.edit")) return;
     if (tabId === "tuv" && isMechanic) return;
     setActiveTab(tabId);
     window.history.replaceState(null, "", `/?tab=${tabId}`);
@@ -153,10 +155,10 @@ function HomeContent() {
     { id: "clients", label: t.clientsCrm, icon: Users, adminOnly: false },
     { id: "archive", label: t.archive, icon: Archive, adminOnly: false },
     { id: "backup", label: "Backup", icon: Database, adminOnly: false },
-    { id: "reports", label: t.reports || "Raporty", icon: BarChart3, adminOnly: true },
+    { id: "reports", label: t.reports || "Raporty", icon: BarChart3, adminOnly: false },
   ];
 
-  const menuItems = allMenuItems.filter((item) => !item.adminOnly || isAdmin);
+  const menuItems = allMenuItems.filter((item) => !item.adminOnly || isOffice);
 
   return (
     <div className="flex min-h-screen relative pb-16 md:pb-0">
@@ -268,7 +270,7 @@ function HomeContent() {
                   "hidden md:inline-flex text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full",
                   isAdmin ? "bg-amber-200 text-amber-900" : "bg-slate-200 text-slate-700"
                 )}>
-                  {isAdmin ? t.roleAdmin : t.roleEmployee}
+                  {isAdmin ? t.roleAdmin : isOffice ? t.roleEmployee : t.roleMechanic}
                 </span>
               </div>
             )}
@@ -333,18 +335,11 @@ function HomeContent() {
                 </TabsContent>
                 <TabsContent value="reports" className="mt-0">
                   <div className="bg-card border rounded-2xl p-6 sm:p-12 shadow-xl shadow-slate-200/50 min-h-[450px] flex items-center justify-center">
-                    {isAdmin ? (
-                      <div className="text-center">
-                        <BarChart3 className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground/20 mx-auto mb-4" />
-                        <h3 className="text-lg sm:text-xl font-bold text-slate-800">{t.reportsTitle}</h3>
-                        <p className="text-sm text-muted-foreground">{t.reportsDesc}</p>
-                      </div>
-                    ) : (
-                      <div className="text-center space-y-2">
-                        <Lock className="w-10 h-10 text-amber-500 mx-auto" />
-                        <h3 className="text-base font-bold text-slate-800">{t.adminOnlyAction}</h3>
-                      </div>
-                    )}
+                    <div className="text-center">
+                      <BarChart3 className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground/20 mx-auto mb-4" />
+                      <h3 className="text-lg sm:text-xl font-bold text-slate-800">{t.reportsTitle}</h3>
+                      <p className="text-sm text-muted-foreground">{t.reportsDesc}</p>
+                    </div>
                   </div>
                 </TabsContent>
               </div>

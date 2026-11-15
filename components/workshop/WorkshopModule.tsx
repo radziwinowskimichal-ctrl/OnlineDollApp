@@ -89,7 +89,7 @@ function UnassignedOrderCard({
   language,
   w,
   trText,
-  isAdmin,
+  canManage,
   onAssign,
   onOpenOrder,
   onOpenApproval,
@@ -103,7 +103,7 @@ function UnassignedOrderCard({
   language: string;
   w: WorkshopI18n;
   trText: (val?: string) => string;
-  isAdmin: boolean;
+  canManage: (action: "workshop.delete") => boolean;
   onAssign: (orderId: string, mechanicIds: string[], unitName: string) => void;
   onOpenOrder: (id: string) => void;
   onOpenApproval: (order: WorkshopOrder) => void;
@@ -329,7 +329,7 @@ function UnassignedOrderCard({
               >
                 <Printer className="w-4 h-4" />
               </Button>
-              {isAdmin && (
+              {canManage("workshop.delete") && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -374,7 +374,7 @@ export function WorkshopModule({ initialOrderId }: { initialOrderId?: string }) 
     profiles,
     currentUser,
     currentUserId,
-    isAdmin,
+    canManage,
     isMechanic,
     isOffice,
     language,
@@ -1395,7 +1395,7 @@ export function WorkshopModule({ initialOrderId }: { initialOrderId?: string }) 
                     language={language}
                     w={w}
                     trText={trText}
-                    isAdmin={isAdmin}
+                    canManage={canManage}
                     onAssign={assignWorkshopOrder}
                     onOpenOrder={setSelectedOrderId}
                     onOpenApproval={setApprovalOrder}
@@ -1597,7 +1597,7 @@ export function WorkshopModule({ initialOrderId }: { initialOrderId?: string }) 
                                 <Printer className="w-4 h-4" />
                               </Button>
 
-                              {isAdmin && (
+                              {canManage("workshop.delete") && (
                                 <Button
                                   variant="ghost"
                                   size="icon"

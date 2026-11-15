@@ -205,7 +205,7 @@ export function BackupManager() {
     createBackupSnapshot,
     deleteBackupSnapshot,
     restoreFromBackup,
-    isAdmin,
+    canManage,
   } = useApp();
 
   const bt = backupTranslations[language as keyof typeof backupTranslations] || backupTranslations.pl;
@@ -495,10 +495,16 @@ export function BackupManager() {
         </div>
       </div>
 
-      {!isAdmin && (
+      {canManage("data.restore") && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm font-semibold">
+          <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          <div>{globalT.officeModeNotice}</div>
+        </div>
+      )}
+      {!canManage("data.restore") && (
         <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm font-semibold">
           <Lock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div>{globalT.adminOnlyBanner}</div>
+          <div>{globalT.adminOnlyAction}</div>
         </div>
       )}
 
@@ -536,14 +542,14 @@ export function BackupManager() {
         </div>
 
         {/* Card 2: Export to File (Admin Only) */}
-        <div className={cn("bg-card border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-4 relative", !isAdmin && "opacity-75")}>
+        <div className={cn("bg-card border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-4 relative", !canManage("data.restore") && "opacity-75")}>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-black text-sm">
                 <Download className="w-4 h-4" />
                 <span>{bt.exportTitle}</span>
               </div>
-              {!isAdmin && <Lock className="w-4 h-4 text-amber-600 shrink-0" />}
+              {!canManage("data.restore") && <Lock className="w-4 h-4 text-amber-600 shrink-0" />}
             </div>
             <p className="text-xs text-muted-foreground">{bt.exportDesc}</p>
           </div>
@@ -551,7 +557,7 @@ export function BackupManager() {
           <div className="space-y-2 pt-1">
             <Button
               onClick={handleExportFullJson}
-              disabled={!isAdmin}
+              disabled={!canManage("data.restore")}
               variant="outline"
               className="w-full h-9 justify-start text-xs font-bold border-emerald-200 hover:bg-emerald-50 text-emerald-900"
             >
@@ -561,7 +567,7 @@ export function BackupManager() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button
                 onClick={handleExportReservationsOnlyJson}
-                disabled={!isAdmin}
+                disabled={!canManage("data.restore")}
                 variant="outline"
                 className="h-9 justify-start text-[11px] font-bold px-2.5"
               >
@@ -570,7 +576,7 @@ export function BackupManager() {
               </Button>
               <Button
                 onClick={handleExportCsv}
-                disabled={!isAdmin}
+                disabled={!canManage("data.restore")}
                 variant="outline"
                 className="h-9 justify-start text-[11px] font-bold px-2.5"
               >
@@ -582,14 +588,14 @@ export function BackupManager() {
         </div>
 
         {/* Card 3: Import & Restore from File (Admin Only) */}
-        <div className={cn("bg-card border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-4 relative", !isAdmin && "opacity-75")}>
+        <div className={cn("bg-card border rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-4 relative", !canManage("data.restore") && "opacity-75")}>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-black text-sm">
                 <Upload className="w-4 h-4" />
                 <span>{bt.importTitle}</span>
               </div>
-              {!isAdmin && <Lock className="w-4 h-4 text-amber-600 shrink-0" />}
+              {!canManage("data.restore") && <Lock className="w-4 h-4 text-amber-600 shrink-0" />}
             </div>
             <p className="text-xs text-muted-foreground">{bt.importDesc}</p>
           </div>
@@ -603,13 +609,13 @@ export function BackupManager() {
               className="hidden"
             />
             <Button
-              onClick={() => isAdmin ? fileInputRef.current?.click() : toast.error(globalT.adminOnlyAction)}
-              disabled={!isAdmin}
+              onClick={() => canManage("data.restore") ? fileInputRef.current?.click() : toast.error(globalT.adminOnlyAction)}
+              disabled={!canManage("data.restore")}
               variant="outline"
               className="w-full h-20 border-2 border-dashed border-amber-300 bg-amber-50/40 hover:bg-amber-50 text-amber-900 font-bold text-xs flex flex-col items-center justify-center gap-1.5 rounded-xl transition-colors"
             >
-              {isAdmin ? <Upload className="w-5 h-5 text-amber-600" /> : <Lock className="w-5 h-5 text-amber-600" />}
-              <span>{isAdmin ? bt.selectFileBtn : globalT.adminOnlyAction}</span>
+              {canManage("data.restore") ? <Upload className="w-5 h-5 text-amber-600" /> : <Lock className="w-5 h-5 text-amber-600" />}
+              <span>{canManage("data.restore") ? bt.selectFileBtn : globalT.adminOnlyAction}</span>
             </Button>
           </div>
         </div>
@@ -680,7 +686,7 @@ export function BackupManager() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {isAdmin ? (
+                  {canManage("data.restore") ? (
                     <>
                       <Button
                         size="sm"

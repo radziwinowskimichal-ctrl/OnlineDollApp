@@ -49,7 +49,7 @@ import { ReturnTrailerDialog } from "./ReturnTrailerDialog";
 import { BackupManager } from "./BackupManager";
 
 export function TrailerCalendar() {
-  const { trailers, reservations, clients, addReservation, addClient, language, currentUserId, profiles, updateReservation, deleteReservation, statusColors, checkTrailerAvailability, createBackupSnapshot, backups, isAdmin } = useApp();
+  const { trailers, reservations, clients, addReservation, addClient, language, currentUserId, profiles, updateReservation, deleteReservation, statusColors, checkTrailerAvailability, createBackupSnapshot, backups, canManage } = useApp();
   const router = useRouter();
 
   const t = translations[language as keyof typeof translations] || translations.pl;
@@ -235,7 +235,7 @@ export function TrailerCalendar() {
   };
 
   const handleDeleteReservation = () => {
-    if (!isAdmin) {
+    if (!canManage("reservation.edit")) {
       toast.error(t.adminOnlyAction);
       return;
     }
@@ -244,7 +244,7 @@ export function TrailerCalendar() {
   };
 
   const confirmDeleteReservation = () => {
-    if (!isAdmin) {
+    if (!canManage("reservation.edit")) {
       toast.error(t.adminOnlyAction);
       return;
     }
@@ -1589,11 +1589,7 @@ export function TrailerCalendar() {
           <DialogFooter className="flex sm:justify-between items-center w-full">
             {isEditingReservation ? (
               <>
-                {isAdmin ? (
-                  <Button variant="destructive" onClick={handleDeleteReservation}>{t.delete}</Button>
-                ) : (
-                  <span className="text-[11px] text-muted-foreground font-medium">{t.adminOnlyAction}</span>
-                )}
+                <Button variant="destructive" onClick={handleDeleteReservation}>{t.delete}</Button>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setIsEditingReservation(false)}>{t.cancel}</Button>
                   <Button onClick={handleUpdateReservation}>{t.saveChanges}</Button>

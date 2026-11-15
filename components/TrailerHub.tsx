@@ -40,7 +40,7 @@ import { Trailer, TrailerType } from "@/lib/store";
 
 export function TrailerHub() {
   const router = useRouter();
-  const { trailers, addTrailer, updateTrailer, updateTrailerTuv, deleteTrailer, resetTrailers, language, isAdmin, isOffice } = useApp();
+  const { trailers, addTrailer, updateTrailer, updateTrailerTuv, deleteTrailer, resetTrailers, language, isOffice, canManage } = useApp();
   const t = translations[language as keyof typeof translations] || translations.pl;
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -125,14 +125,11 @@ export function TrailerHub() {
     return sortConfig.direction === 'asc' ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />;
   };
 
-  const [officeTuvOnly, setOfficeTuvOnly] = useState(false);
-
   const handleOpenDialog = (trailer?: Trailer) => {
-    if (!isAdmin && !(isOffice && trailer)) {
+    if (!canManage("fleet.edit")) {
       toast.error(t.adminOnlyAction);
       return;
     }
-    setOfficeTuvOnly(!isAdmin);
     if (trailer) {
       setEditingTrailer(trailer);
       setPlate(trailer.plate || "");
@@ -182,13 +179,6 @@ export function TrailerHub() {
     };
 
     if (editingTrailer) {
-      if (!isAdmin) {
-        // Office staff only maintain the inspection deadline — everything else stays untouched.
-        const changed = updateTrailerTuv(editingTrailer.id, trailerData.tuvExpiry, undefined);
-        setIsDialogOpen(false);
-        if (changed) toast.success(t.tuvSavedToast);
-        return;
-      }
       updateTrailer(trailerData);
       toast.success(t.trailerUpdated);
     } else {
@@ -199,7 +189,7 @@ export function TrailerHub() {
   };
 
   const handleDelete = (id: string) => {
-    if (!isAdmin) {
+    if (!canManage("fleet.edit")) {
       toast.error(t.adminOnlyAction);
       return;
     }
@@ -211,7 +201,7 @@ export function TrailerHub() {
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between items-center gap-4 bg-slate-50 p-2 rounded-xl border">
         <div className="flex flex-wrap items-center gap-2">
-          {isAdmin && (
+          {canManage("fleet.edit") && (
             <Button variant="ghost" onClick={() => resetTrailers()} className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-primary h-10">
               <ArrowUpDown className="mr-2 h-4 w-4" />
               {t.syncData}
@@ -271,7 +261,7 @@ export function TrailerHub() {
           </div>
         </div>
 
-        {isAdmin && (
+        {canManage("fleet.edit") && (
           <Button onClick={() => handleOpenDialog()} className="rounded-lg font-black uppercase tracking-tighter px-6 shadow-lg shadow-primary/20 h-10">
             <Plus className="mr-2 h-4 w-4" />
             {t.addTrailer}
@@ -409,11 +399,9 @@ export function TrailerHub() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={(e) => { e.stopPropagation(); handleOpenDialog(trailer); }}>
                         <Edit className="h-4 w-4 text-slate-400" />
                       </Button>
-                      {isAdmin && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={(e) => { e.stopPropagation(); handleDelete(trailer.id); }}>
-                          <Trash2 className="h-4 w-4 text-rose-400" />
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={(e) => { e.stopPropagation(); handleDelete(trailer.id); }}>
+                        <Trash2 className="h-4 w-4 text-rose-400" />
+                      </Button>
                     </div>
                   </TableCell>
                 )}
@@ -427,14 +415,9 @@ export function TrailerHub() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingTrailer ? t.editTrailer : t.addTrailer}</DialogTitle>
-            {officeTuvOnly && (
-              <p className="mt-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                {t.tuvOfficeEditHint}
-              </p>
-            )}
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <fieldset disabled={officeTuvOnly} className="grid gap-4 disabled:opacity-60">
+            <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="plate">{t.plate}</Label>
@@ -513,7 +496,7 @@ export function TrailerHub() {
                 <Label htmlFor="dimensions">{t.dimensions}</Label>
                 <Input id="dimensions" value={dimensions} onChange={(e) => setDimensions(e.target.value)} />
               </div>
-            </fieldset>
+            </div>
 
             <div className="grid gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
               <Label htmlFor="tuvExpiry" className="font-black uppercase tracking-wider text-primary">
@@ -535,24 +518,22 @@ export function TrailerHub() {
               </div>
             </div>
 
-            {!officeTuvOnly && (
-              <div className="grid gap-2">
-                <Label htmlFor="status">{t.status}</Label>
-                <Select value={status} onValueChange={(v: any) => setStatus(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="available">{t.available}</SelectItem>
-                    <SelectItem value="service">{t.service}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="grid gap-2">
+              <Label htmlFor="status">{t.status}</Label>
+              <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">{t.available}</SelectItem>
+                  <SelectItem value="service">{t.service}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t.cancel}</Button>
-            <Button onClick={handleSave}>{officeTuvOnly ? t.tuvEditSaveBtn : t.saveTrailer}</Button>
+            <Button onClick={handleSave}>{t.saveTrailer}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
