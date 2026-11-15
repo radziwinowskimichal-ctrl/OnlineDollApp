@@ -338,7 +338,7 @@ export function TrailerHub() {
                   {getSortIcon('status')}
                 </div>
               </TableHead>
-              {isAdmin && (
+              {isOffice && (
                 <TableHead className="text-[10px] font-black uppercase tracking-wider h-12 text-right">{t.actions}</TableHead>
               )}
             </TableRow>
